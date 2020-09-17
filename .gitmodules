@@ -1,0 +1,3 @@
+[submodule "sample_vis_data"]
+	path = sample_vis_data
+	url = https://github.com/bluescarni/sample_vis_data.git

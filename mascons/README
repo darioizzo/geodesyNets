@@ -1,0 +1,8 @@
+This directory contains mascons models for famous asteroids.
+NOTE: coordinates are scaled differently (1/10, 1/100) for different models
+NOTE: values of the masses are the volume of the surrounding finite element, so also to be taken as relative
+
+Usage:
+
+with open("Itokawa_mascon.pk", "rb") as file:
+    mascon_points, mascon_masses = pk.load(file)

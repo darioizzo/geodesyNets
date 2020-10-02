@@ -1,6 +1,7 @@
 This directory contains mascons models for famous asteroids.
-NOTE: coordinates are scaled differently (1/10, 1/100) for different models
-NOTE: values of the masses are the volume of the surrounding finite element, so also to be taken as relative
+NOTE: scales are different for different models
+NOTE: values of the masses are derived from the volume of the corresponding thetraedron for models deriving from 3dmeshes
+ans mostly the same for models deriving from point clouds simulations from MPIA hd5 files.
 
 Usage:
 

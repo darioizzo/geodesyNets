@@ -1,0 +1,7 @@
+These pickles contain vertices and triangles of
+the surface triangular mesh of asteroids.
+
+Usage: 
+
+with open("3dmeshes/Eros.pk", "rb") as f:
+    points, triangles = pk.load(f)

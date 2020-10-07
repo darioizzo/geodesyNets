@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 import torch
 
-def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=100):
+def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     """Plots a mascon model
 
     Args:
@@ -16,6 +16,9 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=100):
     x = points[:, 0]
     y = points[:, 1]
     z = points[:, 2]
+
+    if s is None:
+        s = 22000 / len(points)
 
     if masses is None:
         normalized_masses = s

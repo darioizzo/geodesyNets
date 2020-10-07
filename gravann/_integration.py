@@ -3,14 +3,23 @@ import torch
 import sobol_seq
 from ._encodings import direct_encoding
 
-# We generate 200000 low-discrepancy points in 3D upon import and store it as a global
-# variable
+"""
+Sobol low discrepancy sequence in 3 dimensions
+"""
 sobol_points = sobol_seq.i4_sobol_generate(3, 200000)
 
 # Naive Montecarlo method
 
 
 def U_Pmc(target_points, model, encoding=direct_encoding(), N=3000):
+    """Plain Monte Carlo evaluation of the potential from the modelled density
+
+    Args:
+        target_points (2-D array-like): a (N,3) array-like object containing the points.
+        model (callable (a,b)->1): neural model for the asteroid. 
+        encoding: the encoding for the neural inputs.
+        N (int): number of points.
+    """
     if model[0].in_features != encoding.dim:
         print("encoding is incompatible with the model")
         raise ValueError
@@ -29,6 +38,15 @@ def U_Pmc(target_points, model, encoding=direct_encoding(), N=3000):
 
 
 def U_Pld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
+    """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
+
+    Args:
+        target_points (2-D array-like): a (N,3) array-like object containing the points.
+        model (callable (a,b)->1): neural model for the asteroid. 
+        encoding: the encoding for the neural inputs.
+        N (int): number of points.
+        noise (float): random noise added to point positions.
+    """
     if model[0].in_features != encoding.dim:
         print("encoding is incompatible with the model")
         raise ValueError

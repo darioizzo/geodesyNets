@@ -1,9 +1,5 @@
-This directory contains mascons models for famous asteroids.
-NOTE: scales are different for different models
-NOTE: values of the masses are derived from the volume of the corresponding thetraedron for models deriving from 3dmeshes
-ans mostly the same for models deriving from point clouds simulations from MPIA hd5 files.
+This directory contains mascons models for asteroids.
 
 Usage:
-
 with open("Itokawa_mascon.pk", "rb") as file:
-    mascon_points, mascon_masses = pk.load(file)
+    points, masses, name = pk.load(file)

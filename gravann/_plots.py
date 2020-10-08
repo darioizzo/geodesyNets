@@ -1,6 +1,43 @@
 from matplotlib import pyplot as plt
 import torch
 
+from ._mesh_conversion import create_mesh_from_cloud,create_mesh_from_model
+import pyvista as pv
+pv.set_plot_theme("night")
+
+def plot_model_mesh(model,encoding):
+    """Plots the mesh generated from a model that predicts rho
+
+    Args:
+        model (Torch Model): Model to use 
+        encoding (Encoding function): The function used to encode points for the model
+    """
+    plot_mesh(create_mesh_from_model(model,encoding),smooth_shading=True,show_edges=False)
+
+def plot_point_cloud_mesh(cloud,distance_threshold = 0.125,use_top_k=False):
+    """Display a mesh generated from a point cloud
+
+    Args:
+        cloud (torch tensor): The points that should be used to generate the mesh (3,N)
+        distance_threshold (float, optional): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. Defaults to 0.125.
+        use_top_k (bool, optional): Use mean of 5 closed points for distance or single closest point. Defaults to False.
+    """
+    plot_mesh(create_mesh_from_cloud(cloud.cpu().numpy(),use_top_k=False,distance_threshold=distance_threshold),smooth_shading=True,show_edges=False)
+
+def plot_mesh(cube,show_edges=True,smooth_shading=False):
+    """Plots a mesh
+
+    Args:
+        cube (pyvista mesh): mesh to plot
+        show_edges (bool, optional): Show grid wires. Defaults to True.
+        smooth_shading (bool, optional): [description]. Defaults to False.
+    """
+    #Plot mesh
+    p = pv.Plotter()
+    p.show_grid()
+    p.add_mesh(cube, color="grey", show_edges=show_edges,smooth_shading=smooth_shading)
+    p.show(auto_close=True)
+    
 def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     """Plots a mascon model
 
@@ -85,13 +122,13 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
     else:
         ax = fig.add_subplot(111, projection='3d')
     if bw:
-        col = torch.cat((1-RHO, 1-RHO, 1-RHO, RHO), dim=1)
+        col = torch.cat((1-RHO, 1-RHO, 1-RHO, RHO), dim=1).cpu()
         alpha = None
     else:
-        col = RHO
+        col = RHO.cpu()
 
     ax.scatter(X.reshape(-1, 1).cpu(), Y.reshape(-1, 1).cpu(), Z.reshape(-1, 1).cpu(),
-               marker='.', c=col.cpu(), s=100, alpha=alpha)
+               marker='.', c=col, s=100, alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -99,19 +136,19 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
 
     if views_2d:
         ax2 = fig.add_subplot(222)
-        ax2.scatter(X.reshape(-1, 1)[:, 0].cuda(), Y.reshape(-1, 1)[:, 0].cuda(), 
+        ax2.scatter(X.reshape(-1, 1)[:, 0].cpu(), Y.reshape(-1, 1)[:, 0].cpu(), 
                     marker='.', c=col, s=100, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
 
         ax3 = fig.add_subplot(223)
-        ax3.scatter(X.reshape(-1, 1)[:, 0].cuda(), Z.reshape(-1, 1)[:, 0].cuda(), 
+        ax3.scatter(X.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(), 
                     marker='.', c=col, s=100, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
 
         ax4 = fig.add_subplot(224)
-        ax4.scatter(Y.reshape(-1, 1)[:, 0].cuda(), Z.reshape(-1, 1)[:, 0].cuda(), 
+        ax4.scatter(Y.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(), 
                     marker='.', c=col, s=100, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])

@@ -12,13 +12,19 @@ from ._encodings import directional_encoding, positional_encoding, direct_encodi
 from ._losses import normalized_loss, mse_loss
 
 # Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
-from ._integration import U_Pmc, U_Pld
+from ._integration import U_Pmc, U_Pld, U_trap_opt
 
 # Importing alpha shape methods
 from ._hulls import alpha_shape
 
 # Importing the plots
-from ._plots import plot_mascon, plot_model_grid, plot_model_rejection
+from ._plots import plot_mascon, plot_model_grid, plot_model_rejection 
+from ._plots import plot_mesh, plot_model_mesh, plot_point_cloud_mesh
+
+# Importing the mesh_conversion methods
+from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
+
+from ._utils import max_min_distance
 
 # Will track the main device to use
 os.environ["TORCH_DEVICE"] = 'cpu'

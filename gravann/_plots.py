@@ -13,9 +13,9 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
         s (int): scale for the visualized masses
 
     """
-    x = points[:, 0]
-    y = points[:, 1]
-    z = points[:, 2]
+    x = points[:, 0].cpu()
+    y = points[:, 1].cpu()
+    z = points[:, 2].cpu()
 
     if s is None:
         s = 22000 / len(points)
@@ -30,24 +30,24 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     ax = fig.add_subplot(221, projection='3d')
 
     # And visualize the masses
-    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
+    ax.scatter(x, y, z, color='k', s=normalized_masses.cpu(), alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=elev, azim=azim)
 
     ax2 = fig.add_subplot(222)
-    ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
+    ax2.scatter(x, y, color='k', s=normalized_masses.cpu(), alpha=alpha)
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
 
     ax3 = fig.add_subplot(223)
-    ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
+    ax3.scatter(x, z, color='k', s=normalized_masses.cpu(), alpha=alpha)
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
 
     ax4 = fig.add_subplot(224)
-    ax4.scatter(y, z, color='k', s=normalized_masses, alpha=alpha)
+    ax4.scatter(y, z, color='k', s=normalized_masses.cpu(), alpha=alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
 
@@ -89,8 +89,8 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
     else:
         col = RHO
 
-    ax.scatter(X.reshape(-1, 1), Y.reshape(-1, 1), Z.reshape(-1, 1),
-               marker='.', c=col, s=100, alpha=alpha)
+    ax.scatter(X.reshape(-1, 1).cpu(), Y.reshape(-1, 1).cpu(), Z.reshape(-1, 1).cpu(),
+               marker='.', c=col.cpu(), s=100, alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -98,20 +98,20 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
 
     if views_2d:
         ax2 = fig.add_subplot(222)
-        ax2.scatter(X.reshape(-1, 1)[:, 0], Y.reshape(-1, 1)
-                    [:, 0], marker='.', c=col, s=100, alpha=alpha)
+        ax2.scatter(X.reshape(-1, 1)[:, 0].cuda(), Y.reshape(-1, 1)[:, 0].cuda(), 
+                    marker='.', c=col, s=100, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
 
         ax3 = fig.add_subplot(223)
-        ax3.scatter(X.reshape(-1, 1)[:, 0], Z.reshape(-1, 1)
-                    [:, 0], marker='.', c=col, s=100, alpha=alpha)
+        ax3.scatter(X.reshape(-1, 1)[:, 0].cuda(), Z.reshape(-1, 1)[:, 0].cuda(), 
+                    marker='.', c=col, s=100, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
 
         ax4 = fig.add_subplot(224)
-        ax4.scatter(Y.reshape(-1, 1)[:, 0], Z.reshape(-1, 1)
-                    [:, 0], marker='.', c=col, s=100, alpha=alpha)
+        ax4.scatter(Y.reshape(-1, 1)[:, 0].cuda(), Z.reshape(-1, 1)[:, 0].cuda(), 
+                    marker='.', c=col, s=100, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
 
@@ -147,9 +147,9 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
     if bw:
         col = 'k'
     else:
-        col = RHO
+        col = RHO.cpu()
     # And we plot it
-    ax.scatter(points[:, 0], points[:, 1], points[:, 2],
+    ax.scatter(points[:, 0].cpu(), points[:, 1].cpu(), points[:, 2].cpu(),
                marker='.', c=col, s=s, alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
@@ -158,19 +158,19 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
 
     if views_2d:
         ax2 = fig.add_subplot(222)
-        ax2.scatter(points[:, 0], points[:, 1],
+        ax2.scatter(points[:, 0].cpu(), points[:, 1].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
 
         ax3 = fig.add_subplot(223)
-        ax3.scatter(points[:, 0], points[:, 2],
+        ax3.scatter(points[:, 0].cpu(), points[:, 2].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
 
         ax4 = fig.add_subplot(224)
-        ax4.scatter(points[:, 1], points[:, 2],
+        ax4.scatter(points[:, 1].cpu(), points[:, 2].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])

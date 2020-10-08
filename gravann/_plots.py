@@ -57,7 +57,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
     the density value on a grid.
 
     Args:
-        model (callable (N,M)->1): neural model for the asteroid. 
+        model (callable (a,b)->1): neural model for the asteroid. 
         encoding: the encoding for the neural inputs.
         N (int): grid size (N**3 points will be plotted).
         bw (bool): when True considers zero density as white and transparent. The final effect is a black and white plot
@@ -65,6 +65,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
         views_2d (bool): activates also the 2d projections
 
     """
+
     # We create the grid
     x = torch.linspace(-1, 1, N)
     y = torch.linspace(-1, 1, N)

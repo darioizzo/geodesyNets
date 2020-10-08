@@ -14,6 +14,9 @@ from ._losses import normalized_loss, mse_loss
 # Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
 from ._integration import U_Pmc, U_Pld
 
+# Importing alpha shape methods
+from ._hulls import alpha_shape
+
 # Importing the plots
 from ._plots import plot_mascon, plot_model_grid, plot_model_rejection
 

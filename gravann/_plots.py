@@ -1,42 +1,53 @@
 from matplotlib import pyplot as plt
 import torch
-
-from ._mesh_conversion import create_mesh_from_cloud,create_mesh_from_model
+import math
 import pyvista as pv
+import pyvistaqt as pvqt
 pv.set_plot_theme("night")
 
+
+from ._mesh_conversion import create_mesh_from_cloud,create_mesh_from_model
+
 def plot_model_mesh(model,encoding):
-    """Plots the mesh generated from a model that predicts rho
+    """Plots the mesh generated from a model that predicts rho. Returns the mesh
 
     Args:
         model (Torch Model): Model to use 
         encoding (Encoding function): The function used to encode points for the model
     """
-    plot_mesh(create_mesh_from_model(model,encoding),smooth_shading=True,show_edges=False)
+    mesh = create_mesh_from_model(model,encoding)
+    plot_mesh(mesh,smooth_shading=True,show_edges=False)
+    return mesh
 
 def plot_point_cloud_mesh(cloud,distance_threshold = 0.125,use_top_k=False):
-    """Display a mesh generated from a point cloud
+    """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
         cloud (torch tensor): The points that should be used to generate the mesh (3,N)
         distance_threshold (float, optional): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. Defaults to 0.125.
         use_top_k (bool, optional): Use mean of 5 closed points for distance or single closest point. Defaults to False.
     """
-    plot_mesh(create_mesh_from_cloud(cloud.cpu().numpy(),use_top_k=False,distance_threshold=distance_threshold),smooth_shading=True,show_edges=False)
+    mesh = create_mesh_from_cloud(cloud.cpu().numpy(),use_top_k=False,distance_threshold=distance_threshold)
+    plot_mesh(mesh,smooth_shading=True,show_edges=False)
+    return mesh
 
-def plot_mesh(cube,show_edges=True,smooth_shading=False):
-    """Plots a mesh
+def plot_mesh(mesh,show_edges=True,smooth_shading=False,interactive=True, elev = 45, azim = 125):
+    """Plots a mesh ()
 
     Args:
-        cube (pyvista mesh): mesh to plot
+        mesh (pyvista mesh): mesh to plot
         show_edges (bool, optional): Show grid wires. Defaults to True.
-        smooth_shading (bool, optional): [description]. Defaults to False.
+        smooth_shading (bool, optional): Use smooth_shading. Defaults to False.
+        interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
     #Plot mesh
-    p = pv.Plotter()
+    if interactive:
+        p = pvqt.BackgroundPlotter()
+    else:
+        p = pv.Plotter()
     p.show_grid()
-    p.add_mesh(cube, color="grey", show_edges=show_edges,smooth_shading=smooth_shading)
-    p.show(auto_close=True)
+    p.add_mesh(mesh, color="grey", show_edges=show_edges,smooth_shading=smooth_shading)
+    p.show()
     
 def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     """Plots a mascon model

@@ -7,29 +7,33 @@ import pyvistaqt as pvqt
 pv.set_plot_theme("night")
 
 
-def plot_model_mesh(model, encoding):
+def plot_model_mesh(model, encoding, interactive=False):
     """Plots the mesh generated from a model that predicts rho. Returns the mesh
 
     Args:
         model (Torch Model): Model to use 
         encoding (Encoding function): The function used to encode points for the model
+        interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
     mesh = create_mesh_from_model(model, encoding)
-    plot_mesh(mesh, smooth_shading=True, show_edges=False)
+    plot_mesh(mesh, smooth_shading=True,
+              show_edges=False, interactive=interactive)
     return mesh
 
 
-def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False):
+def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False, interactive=False):
     """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
         cloud (torch tensor): The points that should be used to generate the mesh (3,N)
         distance_threshold (float, optional): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. Defaults to 0.125.
         use_top_k (bool, optional): Use mean of 5 closed points for distance or single closest point. Defaults to False.
+        interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
-    mesh = create_mesh_from_cloud(
-        cloud.cpu().numpy(), use_top_k=False, distance_threshold=distance_threshold)
-    plot_mesh(mesh, smooth_shading=True, show_edges=False)
+    mesh = create_mesh_from_cloud(cloud.cpu().numpy(
+    ), use_top_k=use_top_k, distance_threshold=distance_threshold)
+    plot_mesh(mesh, smooth_shading=True,
+              show_edges=False, interactive=interactive)
     return mesh
 
 

@@ -1,6 +1,7 @@
 from scipy.spatial import Delaunay
 import numpy as np
 
+
 def alpha_shape(points, alpha, only_outer=True):
     """
     Compute the alpha shape (concave hull) of a set of points.
@@ -17,7 +18,6 @@ def alpha_shape(points, alpha, only_outer=True):
     """
     assert points.shape[0] > 3, "Need at least four points"
     assert points.shape[1] == 2, "Need two dimensional points"
-
 
     def add_edge(edges, i, j):
         """

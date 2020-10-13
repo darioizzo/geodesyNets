@@ -1,3 +1,4 @@
+from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 from matplotlib import pyplot as plt
 import torch
 import math
@@ -6,20 +7,19 @@ import pyvistaqt as pvqt
 pv.set_plot_theme("night")
 
 
-from ._mesh_conversion import create_mesh_from_cloud,create_mesh_from_model
-
-def plot_model_mesh(model,encoding):
+def plot_model_mesh(model, encoding):
     """Plots the mesh generated from a model that predicts rho. Returns the mesh
 
     Args:
         model (Torch Model): Model to use 
         encoding (Encoding function): The function used to encode points for the model
     """
-    mesh = create_mesh_from_model(model,encoding)
-    plot_mesh(mesh,smooth_shading=True,show_edges=False)
+    mesh = create_mesh_from_model(model, encoding)
+    plot_mesh(mesh, smooth_shading=True, show_edges=False)
     return mesh
 
-def plot_point_cloud_mesh(cloud,distance_threshold = 0.125,use_top_k=False):
+
+def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False):
     """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
@@ -27,11 +27,13 @@ def plot_point_cloud_mesh(cloud,distance_threshold = 0.125,use_top_k=False):
         distance_threshold (float, optional): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. Defaults to 0.125.
         use_top_k (bool, optional): Use mean of 5 closed points for distance or single closest point. Defaults to False.
     """
-    mesh = create_mesh_from_cloud(cloud.cpu().numpy(),use_top_k=use_top_k,distance_threshold=distance_threshold)
-    plot_mesh(mesh,smooth_shading=True,show_edges=False)
+    mesh = create_mesh_from_cloud(cloud.cpu().numpy(
+    ), use_top_k=use_top_k, distance_threshold=distance_threshold)
+    plot_mesh(mesh, smooth_shading=True, show_edges=False)
     return mesh
 
-def plot_mesh(mesh,show_edges=True,smooth_shading=False,interactive=True, elev = 45, azim = 125):
+
+def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, elev=45, azim=125):
     """Plots a mesh ()
 
     Args:
@@ -40,15 +42,17 @@ def plot_mesh(mesh,show_edges=True,smooth_shading=False,interactive=True, elev =
         smooth_shading (bool, optional): Use smooth_shading. Defaults to False.
         interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
-    #Plot mesh
+    # Plot mesh
     if interactive:
         p = pvqt.BackgroundPlotter()
     else:
         p = pv.Plotter()
     p.show_grid()
-    p.add_mesh(mesh, color="grey", show_edges=show_edges,smooth_shading=smooth_shading)
+    p.add_mesh(mesh, color="grey", show_edges=show_edges,
+               smooth_shading=smooth_shading)
     p.show()
-    
+
+
 def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     """Plots a mascon model
 
@@ -147,23 +151,22 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
 
     if views_2d:
         ax2 = fig.add_subplot(222)
-        ax2.scatter(X.reshape(-1, 1)[:, 0].cpu(), Y.reshape(-1, 1)[:, 0].cpu(), 
+        ax2.scatter(X.reshape(-1, 1)[:, 0].cpu(), Y.reshape(-1, 1)[:, 0].cpu(),
                     marker='.', c=col, s=100, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
 
         ax3 = fig.add_subplot(223)
-        ax3.scatter(X.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(), 
+        ax3.scatter(X.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(),
                     marker='.', c=col, s=100, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
 
         ax4 = fig.add_subplot(224)
-        ax4.scatter(Y.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(), 
+        ax4.scatter(Y.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(),
                     marker='.', c=col, s=100, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
-
 
 
 def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100):
@@ -223,4 +226,3 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
                     marker='.', c=col, s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
-

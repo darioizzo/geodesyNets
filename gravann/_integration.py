@@ -61,14 +61,16 @@ def U_Pld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
         sobol_points[:N, :] * 2 - 1, device=os.environ["TORCH_DEVICE"]) + torch.rand(N, 3, device=os.environ["TORCH_DEVICE"]) * noise
     nn_inputs = encoding(sample_points)
     rho = model(nn_inputs)
-    retval = torch.empty(len(target_points), 1, device=os.environ["TORCH_DEVICE"])
+    retval = torch.empty(len(target_points), 1,
+                         device=os.environ["TORCH_DEVICE"])
     # Only for the points inside we accumulate the integrand (MC method)
     for i, target_point in enumerate(target_points):
         retval[i] = torch.sum(
             rho/torch.norm(target_point - sample_points, dim=1).view(-1, 1)) / N
     return - 8 * retval
 
-def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000,verbose=False):
+
+def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False):
     """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
 
     Args:
@@ -81,40 +83,50 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000,verbose
     Returns:
         Tensor: Computed potentials per point
     """
-    N = int(np.round(np.cbrt(N))) #approximate subdivisions
-    retval = torch.empty(len(target_points),1, device=os.environ["TORCH_DEVICE"]) #init result vector
-    
-    #Create grid and assemble evaluation points
-    grid_1d = torch.linspace(-1,1,N, device=os.environ["TORCH_DEVICE"])
-    h = (grid_1d[1] - grid_1d[0])
-    x,y,z = torch.meshgrid(grid_1d,grid_1d,grid_1d)
-    eval_points = torch.stack((x.flatten(),y.flatten(),z.flatten())).transpose(0,1).to(os.environ["TORCH_DEVICE"])
-    if verbose: print("eval_points=",eval_points)
-    if verbose: print("h=",h)
-    
-    #Evaluate Rho on the grid
-    nn_inputs = encoding(eval_points) #Encode grid
-    nn_inputs[nn_inputs!=nn_inputs] = 0.0 #set Nans to 0
-    rho = model(nn_inputs)
-    
-    for i, target_point in enumerate(target_points):
-        
-        f_values = rho/torch.norm(target_point - eval_points, dim=1).view(-1,1).detach()
+    N = int(np.round(np.cbrt(N)))  # approximate subdivisions
+    # init result vector
+    retval = torch.empty(len(target_points), 1,
+                         device=os.environ["TORCH_DEVICE"])
 
-        #Evaluate all points
-        evaluations = f_values.reshape([N,N,N]) #map to z,y,x
-        if verbose: print("evaluations=",evaluations)
+    # Create grid and assemble evaluation points
+    grid_1d = torch.linspace(-1, 1, N, device=os.environ["TORCH_DEVICE"])
+    h = (grid_1d[1] - grid_1d[0])
+    x, y, z = torch.meshgrid(grid_1d, grid_1d, grid_1d)
+    eval_points = torch.stack((x.flatten(), y.flatten(), z.flatten())).transpose(
+        0, 1).to(os.environ["TORCH_DEVICE"])
+    if verbose:
+        print("eval_points=", eval_points)
+    if verbose:
+        print("h=", h)
+
+    # Evaluate Rho on the grid
+    nn_inputs = encoding(eval_points)  # Encode grid
+    nn_inputs[nn_inputs != nn_inputs] = 0.0  # set Nans to 0
+    rho = model(nn_inputs)
+
+    for i, target_point in enumerate(target_points):
+
+        f_values = rho/torch.norm(target_point -
+                                  eval_points, dim=1).view(-1, 1).detach()
+
+        # Evaluate all points
+        evaluations = f_values.reshape([N, N, N])  # map to z,y,x
+        if verbose:
+            print("evaluations=", evaluations)
 
         # area = h / 2 + (f0 + f2)
-        int_x = h / 2 * (evaluations[:,:,0:-1] + evaluations[:,:,1:])
-        int_x = torch.sum(int_x,dim=2)
-        int_y = h / 2 * (int_x[:,0:-1] + int_x[:,1:])
-        int_y = torch.sum(int_y,dim=1)
+        int_x = h / 2 * (evaluations[:, :, 0:-1] + evaluations[:, :, 1:])
+        int_x = torch.sum(int_x, dim=2)
+        int_y = h / 2 * (int_x[:, 0:-1] + int_x[:, 1:])
+        int_y = torch.sum(int_y, dim=1)
         int_z = h / 2 * (int_y[0:-1] + int_y[1:])
-        int_z = torch.sum(int_z,dim=0)
-        if verbose: print("int_x",int_x.shape,int_x)
-        if verbose: print("int_y",int_y.shape,int_y)
-        if verbose: print("int_z",int_z.shape,int_z)
-    
+        int_z = torch.sum(int_z, dim=0)
+        if verbose:
+            print("int_x", int_x.shape, int_x)
+        if verbose:
+            print("int_y", int_y.shape, int_y)
+        if verbose:
+            print("int_z", int_z.shape, int_z)
+
         retval[i] = int_z
     return -retval

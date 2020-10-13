@@ -1,10 +1,12 @@
 import torch
 import numpy as np
 
+
 class directional_encoding:
     """ Directional encoding
     x = [x,y,z] is encoded as [ix, iy, iz, r]
     """
+
     def __init__(self):
         self.dim = 4
         self.name = "directional_encoding"
@@ -13,6 +15,7 @@ class directional_encoding:
     def __call__(self, sp):
         unit = sp / torch.norm(sp, dim=1).view(-1, 1)
         return torch.cat((unit, torch.norm(sp, dim=1).view(-1, 1)), dim=1)
+
 
 class positional_encoding:
     """ Positional encoding
@@ -30,6 +33,7 @@ class positional_encoding:
             retval = torch.cat((retval, torch.sin(
                 2**i*np.pi * sp).view(-1, 3), torch.cos(2**i*np.pi * sp).view(-1, 3)), dim=1)
         return retval
+
 
 class direct_encoding:
     """Direct encoding:

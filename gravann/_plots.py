@@ -15,11 +15,11 @@ def plot_model_mesh(model, encoding):
         encoding (Encoding function): The function used to encode points for the model
     """
     mesh = create_mesh_from_model(model, encoding)
-    plot_mesh(mesh, smooth_shading=True, show_edges=False)
+    plot_mesh(mesh, smooth_shading=True, show_edges=False, interactive=False)
     return mesh
 
 
-def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False):
+def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False, interactive=False):
     """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
@@ -29,7 +29,7 @@ def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False):
     """
     mesh = create_mesh_from_cloud(cloud.cpu().numpy(
     ), use_top_k=use_top_k, distance_threshold=distance_threshold)
-    plot_mesh(mesh, smooth_shading=True, show_edges=False)
+    plot_mesh(mesh, smooth_shading=True, show_edges=False, interactive=False)
     return mesh
 
 

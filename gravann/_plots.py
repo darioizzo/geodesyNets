@@ -27,7 +27,7 @@ def plot_point_cloud_mesh(cloud,distance_threshold = 0.125,use_top_k=False):
         distance_threshold (float, optional): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. Defaults to 0.125.
         use_top_k (bool, optional): Use mean of 5 closed points for distance or single closest point. Defaults to False.
     """
-    mesh = create_mesh_from_cloud(cloud.cpu().numpy(),use_top_k=False,distance_threshold=distance_threshold)
+    mesh = create_mesh_from_cloud(cloud.cpu().numpy(),use_top_k=use_top_k,distance_threshold=distance_threshold)
     plot_mesh(mesh,smooth_shading=True,show_edges=False)
     return mesh
 

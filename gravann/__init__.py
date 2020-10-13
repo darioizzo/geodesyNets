@@ -4,7 +4,7 @@ It was developed by the Advanced Conpcets team in the context of the project "AN
 """
 import torch
 import warnings
-import os 
+import os
 # Importing encodings for the spacial asteroid dimensions
 from ._encodings import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
 
@@ -18,7 +18,7 @@ from ._integration import U_Pmc, U_Pld, U_trap_opt
 from ._hulls import alpha_shape
 
 # Importing the plots
-from ._plots import plot_mascon, plot_model_grid, plot_model_rejection 
+from ._plots import plot_mascon, plot_model_grid, plot_model_rejection
 from ._plots import plot_mesh, plot_model_mesh, plot_point_cloud_mesh
 
 # Importing the mesh_conversion methods
@@ -32,11 +32,11 @@ os.environ["TORCH_DEVICE"] = 'cpu'
 # Miscellaneous functions loaded into the main namespace
 
 
-def enableCUDA():
+def enableCUDA(device=0):
     """This function will set the default device to CUDA if possible. Call before declaring any variables!
     """
     if torch.cuda.is_available():
-        os.environ["TORCH_DEVICE"] = "cuda:0"
+        os.environ["TORCH_DEVICE"] = "cuda:" + str(device)
         print('Available devices ', torch.cuda.device_count())
         print('__pyTorch VERSION:', torch.__version__)
         print('__CUDNN VERSION:', torch.backends.cudnn.version())
@@ -61,7 +61,8 @@ def U_L(target_points, points, masses=None):
 
     if masses is None:
         masses = 1./len(points)
-    retval = torch.empty(len(target_points), 1, device=os.environ["TORCH_DEVICE"])
+    retval = torch.empty(len(target_points), 1,
+                         device=os.environ["TORCH_DEVICE"])
     for i, target_point in enumerate(target_points):
         retval[i] = torch.sum(
             masses/torch.norm(torch.sub(points, target_point), dim=1))

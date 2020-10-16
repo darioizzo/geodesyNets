@@ -73,7 +73,7 @@ def U_Pld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
     return - 8 * retval
 
 
-def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False):
+def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5):
     """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
 
     Args:
@@ -82,6 +82,7 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
         encoding: the encoding for the neural inputs.
         N (int): number of points.
         verbose (bool, optional): Print intermediate results. Defaults to False.
+        noise (float): random noise added to point positions.
 
     Returns:
         Tensor: Computed potentials per point
@@ -97,6 +98,11 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
     x, y, z = torch.meshgrid(grid_1d, grid_1d, grid_1d)
     eval_points = torch.stack((x.flatten(), y.flatten(), z.flatten())).transpose(
         0, 1).to(os.environ["TORCH_DEVICE"])
+
+    # We add some noise to the evaluated grid points to ensure the networks learns all
+    eval_points += torch.rand(N**3, 3,
+                              device=os.environ["TORCH_DEVICE"]) * noise
+
     if verbose:
         print("eval_points=", eval_points)
     if verbose:

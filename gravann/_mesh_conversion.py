@@ -48,7 +48,7 @@ def _point_cloud_topk_distance(target_points, cloud_points, k=5):
 
 def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=0.005,
                            target_point=[0, 0, 0], distance_threshold=0.125, adaptive_step=True,
-                           verbose=False, plot_each_it=10, max_iter=200, use_top_k=False):
+                           verbose=False, plot_each_it=10, max_iter=200, use_top_k=1):
     """Generates a mesh from a point cloud
 
     Args:
@@ -62,7 +62,7 @@ def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=
         verbose (bool): verbose out put for debugging
         plot_each_it (int): how often to plot
         max_iter (int): max iteration termination criterium
-        use_top_k (bool): if k-nearest or just nearest neighbor should be used for distance. Defaults to False.
+        use_top_k (int): the number of nearest neighbours to be used for distance.
 
     Returns:
         [pyvista mesh]: Mesh of the cloud
@@ -107,9 +107,9 @@ def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=
             print("new_points", new_points)
 
         # Compute values at new positions
-        if use_top_k:
+        if use_top_k > 1:
             cloud_distances = _point_cloud_topk_distance(
-                new_points, cloud_points)
+                new_points, cloud_points, use_top_k)
         else:
             cloud_distances = _point_cloud_distance(new_points, cloud_points)
         if verbose:
@@ -128,7 +128,7 @@ def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=
 
         if adaptive_step:
             dst = cloud_distances[cloud_distances > distance_threshold]
-            if use_top_k:
+            if use_top_k > 1:
                 stepsize = 0.00001 + 0.05 * np.stack([dst, dst, dst], axis=1)
             else:
                 stepsize = 0.00001 + 0.1 * np.stack([dst, dst, dst], axis=1)

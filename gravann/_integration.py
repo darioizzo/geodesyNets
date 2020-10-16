@@ -59,18 +59,20 @@ def U_Pld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
     # We generate randomly points in the [-1,1]^3 bounds
     if os.environ["TORCH_DEVICE"] != "cpu":
         sample_points = torch.cuda.FloatTensor(
-            sobol_points[:N, :] * 2 - 1) + torch.rand(N, 3) * noise
+            sobol_points[:N, :] * 2 - 1, device=os.environ["TORCH_DEVICE"]) + torch.rand(N, 3, device=os.environ["TORCH_DEVICE"]) * noise
     else:
         sample_points = torch.tensor(
             sobol_points[:N, :] * 2 - 1) + torch.rand(N, 3) * noise
     nn_inputs = encoding(sample_points)
     rho = model(nn_inputs)
-    retval = torch.empty(len(target_points), 1)
+    retval = torch.empty(len(target_points), 1, device=os.environ["TORCH_DEVICE"])
     # Only for the points inside we accumulate the integrand (MC method)
     for i, target_point in enumerate(target_points):
         retval[i] = torch.sum(
             rho/torch.norm(target_point - sample_points, dim=1).view(-1, 1)) / N
     return - 8 * retval
+
+# Trapezoid rule
 
 
 def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5):

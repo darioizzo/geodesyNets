@@ -5,6 +5,7 @@ It was developed by the Advanced Conpcets team in the context of the project "AN
 import torch
 import warnings
 import os
+
 # Importing encodings for the spacial asteroid dimensions
 from ._encodings import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
 
@@ -30,8 +31,6 @@ from ._utils import max_min_distance
 os.environ["TORCH_DEVICE"] = 'cpu'
 
 # Miscellaneous functions loaded into the main namespace
-
-
 def enableCUDA(device=0):
     """This function will set the default device to CUDA if possible. Call before declaring any variables!
     """

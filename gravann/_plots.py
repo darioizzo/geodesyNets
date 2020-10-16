@@ -7,7 +7,20 @@ import pyvistaqt as pvqt
 pv.set_plot_theme("night")
 
 
-def plot_model_mesh(model, encoding, interactive=False):
+def plot_points(points):
+    """Creates a 3D scatter plot of passed points.     
+
+    Args:
+        points (torch tensor): Points to plot.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(points[:, 0].cpu().numpy(),
+               points[:, 1].cpu().numpy(),
+               points[:, 2].cpu().numpy())
+
+
+def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
     """Plots the mesh generated from a model that predicts rho. Returns the mesh
 
     Args:
@@ -15,7 +28,7 @@ def plot_model_mesh(model, encoding, interactive=False):
         encoding (Encoding function): The function used to encode points for the model
         interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
-    mesh = create_mesh_from_model(model, encoding)
+    mesh = create_mesh_from_model(model, encoding, rho_threshold=rho_threshold)
     plot_mesh(mesh, smooth_shading=True,
               show_edges=False, interactive=interactive)
     return mesh

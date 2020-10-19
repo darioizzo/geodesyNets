@@ -34,14 +34,14 @@ def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
     return mesh
 
 
-def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=False, interactive=False):
+def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interactive=False):
     """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
         cloud (torch tensor): The points that should be used to generate the mesh (3,N)
-        distance_threshold (float, optional): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. Defaults to 0.125.
-        use_top_k (bool, optional): Use mean of 5 closed points for distance or single closest point. Defaults to False.
-        interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
+        distance_threshold (float): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. 
+        use_top_k (int): the number of nearest neighbours to be used for distance.
+        interactive (bool): Creates a separate window which you can use interactively.
     """
     mesh = create_mesh_from_cloud(cloud.cpu().numpy(
     ), use_top_k=use_top_k, distance_threshold=distance_threshold)
@@ -55,9 +55,9 @@ def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, ele
 
     Args:
         mesh (pyvista mesh): mesh to plot
-        show_edges (bool, optional): Show grid wires. Defaults to True.
-        smooth_shading (bool, optional): Use smooth_shading. Defaults to False.
-        interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
+        show_edges (bool,): Show grid wires. 
+        smooth_shading (bool): Use smooth_shading.
+        interactive (bool): Creates a separate window which you can use interactively.
     """
     # Plot mesh
     if interactive:

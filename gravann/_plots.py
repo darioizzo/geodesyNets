@@ -7,7 +7,20 @@ import pyvistaqt as pvqt
 pv.set_plot_theme("night")
 
 
-def plot_model_mesh(model, encoding, interactive=False):
+def plot_points(points):
+    """Creates a 3D scatter plot of passed points.     
+
+    Args:
+        points (torch tensor): Points to plot.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(points[:, 0].cpu().numpy(),
+               points[:, 1].cpu().numpy(),
+               points[:, 2].cpu().numpy())
+
+
+def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
     """Plots the mesh generated from a model that predicts rho. Returns the mesh
 
     Args:
@@ -15,7 +28,7 @@ def plot_model_mesh(model, encoding, interactive=False):
         encoding (Encoding function): The function used to encode points for the model
         interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
-    mesh = create_mesh_from_model(model, encoding)
+    mesh = create_mesh_from_model(model, encoding, rho_threshold=rho_threshold)
     plot_mesh(mesh, smooth_shading=True,
               show_edges=False, interactive=interactive)
     return mesh
@@ -80,32 +93,34 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
         normalized_masses = s
     else:
         normalized_masses = masses / sum(masses)
-        normalized_masses = normalized_masses * s * len(x)
+        normalized_masses = (normalized_masses * s * len(x)).cpu()
 
     fig = plt.figure()
     ax = fig.add_subplot(221, projection='3d')
 
     # And visualize the masses
-    ax.scatter(x, y, z, color='k', s=normalized_masses.cpu(), alpha=alpha)
+    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=elev, azim=azim)
 
     ax2 = fig.add_subplot(222)
-    ax2.scatter(x, y, color='k', s=normalized_masses.cpu(), alpha=alpha)
+    ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
 
     ax3 = fig.add_subplot(223)
-    ax3.scatter(x, z, color='k', s=normalized_masses.cpu(), alpha=alpha)
+    ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
 
     ax4 = fig.add_subplot(224)
-    ax4.scatter(y, z, color='k', s=normalized_masses.cpu(), alpha=alpha)
+    ax4.scatter(y, z, color='k', s=normalized_masses, alpha=alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
+
+    plt.show()
 
 
 def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
@@ -172,6 +187,8 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
 
+    plt.show()
+
 
 def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
@@ -230,3 +247,5 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
                     marker='.', c=col, s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
+
+    plt.show()

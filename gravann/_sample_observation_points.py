@@ -7,13 +7,13 @@ import os
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 
 
-def get_target_point_sampler(N, method="default", radius=[1.73205, 1.73205]):
+def get_target_point_sampler(N, method="default", radius_bounds=[1.73205, 1.73205]):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 
     Args:
         N (int): Number of points to get each call
-        radius (list): Defaults to [1.73205, 1.73205]. Specifies sampling radius for "spherical" (not used in other methods)
+        radius_bounds (list): Defaults to [1.73205, 1.73205]. Specifies sampling radius for "spherical" (not used in other methods)
         method (str, optional): Utilized method. Currently supports random points
                                 (default) or a spherical grid (will not change each 
                                 call). Defaults to "default".
@@ -24,7 +24,7 @@ def get_target_point_sampler(N, method="default", radius=[1.73205, 1.73205]):
     if method == "default":
         return lambda: _sample_default(N)
     elif method == "spherical":
-        return lambda: _sample_spherical(N, radius)
+        return lambda: _sample_spherical(N, radius_bounds)
     elif method == "spherical_grid":
         points = _get_spherical_grid(N)
         return lambda: points
@@ -74,12 +74,12 @@ def _limit_to_domain(points, domain=[[-1, 1], [-1, 1], [-1, 1]]):
     return points[d]
 
 
-def _sample_spherical(N, radius=[1.73205, 1.73205]):
-    """Generates N uniform random samples on a sphere of specified radius.
+def _sample_spherical(N, radius_bounds=[1.73205, 1.73205]):
+    """Generates N uniform random samples inside a sphere with specified radius bounds.
 
     Args:
         N (int): Number of points to create
-        radius (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube..
+        radius_bounds (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube..
 
     Returns:
         Torch tensor: Sampled points
@@ -91,12 +91,12 @@ def _sample_spherical(N, radius=[1.73205, 1.73205]):
     phi = torch.acos(1.0 - 2.0 * torch.rand(N, 1,
                                             device=os.environ["TORCH_DEVICE"]))
 
-    minimal_radius_scale = radius[0] / radius[1]
+    minimal_radius_scale = radius_bounds[0] / radius_bounds[1]
     # Create uniform between
     uni = minimal_radius_scale + \
         (1.0 - minimal_radius_scale) * \
         torch.rand(N, 1, device=os.environ["TORCH_DEVICE"])
-    r = radius[1] * torch.pow(uni, 1/3)
+    r = radius_bounds[1] * torch.pow(uni, 1/3)
 
     x = r * torch.sin(phi) * torch.cos(theta)
     y = r * torch.sin(phi) * torch.sin(theta)

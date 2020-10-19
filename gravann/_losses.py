@@ -7,4 +7,4 @@ def normalized_loss(predicted, labels):
 
 
 def mse_loss(predicted, labels):
-    return torch.nn.MSELoss(predicted, labels)
+    return torch.nn.MSELoss()(predicted, labels)

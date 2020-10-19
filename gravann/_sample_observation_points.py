@@ -7,22 +7,23 @@ import os
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 
 
-def get_target_point_sampler(N, method="default", radius_bounds=[1.73205, 1.73205]):
+def get_target_point_sampler(N, method="cubical", radius_bounds=[1.73205, 1.73205], scale_bounds=[1.0, 1.1]):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 
     Args:
         N (int): Number of points to get each call
         radius_bounds (list): Defaults to [1.73205, 1.73205]. Specifies sampling radius for "spherical" (not used in other methods)
-        method (str, optional): Utilized method. Currently supports random points
-                                (default) or a spherical grid (will not change each 
-                                call). Defaults to "default".
+        scale_bounds (list): Defaults to [1.0,1.1]. Specifies sampling radius for "cubical" (not used in other methods)
+        method (str, optional): Utilized method. Currently supports random points from some volume
+                                (cubical, spherical) or a spherical grid (will not change each 
+                                call). Defaults to "cubical".
 
     Returns:
         lambda: function to call to get sampled target points
     """
-    if method == "default":
-        return lambda: _sample_default(N)
+    if method == "cubical":
+        return lambda: _sample_cubical(N, scale_bounds)
     elif method == "spherical":
         return lambda: _sample_spherical(N, radius_bounds)
     elif method == "spherical_grid":
@@ -111,26 +112,28 @@ def _sample_spherical(N, radius_bounds=[1.73205, 1.73205]):
         return points.float()
 
 
-def _sample_default(N, scale=1.1):
+def _sample_cubical(N, scale_bounds=[1.0, 1.1]):
     """Generates N uniform random samples from a cube with passed scale. All points outside unit cube.
 
     Args:
         N (int): Nr of points to create.
-        scale (float, optional): Scale of the domain for the points (unitcube will be discarded so has to be > 1). Defaults to 1.1.
+        scale_bounds (float, optional): Scales of the domain for the points. Defaults to [1.0, 1.1].
 
     Returns:
         Torch tensor: Sampled points
     """
     # Approximation of percentage points in Unitsphere
-    approx = (1.0 / scale)**3
+    approx = (scale_bounds[0] / scale_bounds[1])**3
 
     # Sample twice the expected number of points necessary to achieve N
     approx_necessary_samples = int(2 * N * (1.0 / (1.0 - approx)))
     points = (torch.rand(approx_necessary_samples, 3,
-                         device=os.environ["TORCH_DEVICE"])*2 - 1)*scale
+                         device=os.environ["TORCH_DEVICE"])*2 - 1)*scale_bounds[1]
 
     # Discard points inside unitcube
-    points = _limit_to_domain(points)
+    domain = scale_bounds[0]*torch.tensor(
+        [[-1, 1], [-1, 1], [-1, 1]], device=os.environ["TORCH_DEVICE"])
+    points = _limit_to_domain(points, domain)
 
     # Take first N points (N.B. that in super unlikely event of
     # less than N points this will not crash. I tried. :))

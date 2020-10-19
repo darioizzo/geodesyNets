@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+# There is no torch.pi so we define it here
+torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
+
 
 def get_target_point_sampler(N, method="default"):
     """Get a function to sample N target points from. Points may differ each
@@ -19,6 +22,8 @@ def get_target_point_sampler(N, method="default"):
     """
     if method == "default":
         return lambda: _sample_default(N)
+    elif method == "spherical":
+        return lambda: _sample_spherical(N)
     elif method == "spherical_grid":
         points = _get_spherical_grid(N)
         return lambda: points
@@ -36,9 +41,9 @@ def _get_spherical_grid(N, radius=1.73205):
         [torch tensor]: Points on the sphere.
     """
     N = int(np.round(np.sqrt(N)))  # 2d grid
-    offset = np.pi / (N+2)  # Use an offset to avoid singularities at poles
+    offset = torch.pi / (N+2)  # Use an offset to avoid singularities at poles
     grid_1d = torch.linspace(
-        offset, np.pi-offset, N, device=os.environ["TORCH_DEVICE"])
+        offset, torch.pi-offset, N, device=os.environ["TORCH_DEVICE"])
     phi, theta = torch.meshgrid(grid_1d, grid_1d)
     x = radius * torch.sin(phi) * torch.cos(2*theta)
     y = radius * torch.sin(phi) * torch.sin(2*theta)
@@ -49,7 +54,7 @@ def _get_spherical_grid(N, radius=1.73205):
 
 
 def _limit_to_domain(points, domain=[[-1, 1], [-1, 1], [-1, 1]]):
-    """Throws away all passed points that were inside the passed domain. Domain has to be convex.
+    """Throws away all passed points that were inside the passed domain. Domain has to be cuboid.
 
     Args:
         points (torch tensor): Points to inspect.
@@ -68,6 +73,36 @@ def _limit_to_domain(points, domain=[[-1, 1], [-1, 1], [-1, 1]]):
     return points[d]
 
 
+def _sample_spherical(N, radius=1.73205):
+    """Generates N uniform random samples on a sphere of specified radius.
+
+    Args:
+        N (int): Number of points to create
+        radius (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube..
+
+    Returns:
+        Torch tensor: Sampled points
+    """
+    theta = 2.0 * torch.pi * torch.rand(N, 1,
+                                        device=os.environ["TORCH_DEVICE"])
+
+    # The acos here allows us to sample uniformly on the sphere
+    phi = torch.acos(1.0 - 2.0 * torch.rand(N, 1,
+                                            device=os.environ["TORCH_DEVICE"]))
+
+    x = radius * torch.sin(phi) * torch.cos(theta)
+    y = radius * torch.sin(phi) * torch.sin(theta)
+    z = radius * torch.cos(phi)
+
+    points = torch.stack((x.flatten(), y.flatten(), z.flatten())).transpose(
+        0, 1).to(os.environ["TORCH_DEVICE"])
+
+    if os.environ["TORCH_DEVICE"] == "cpu":
+        return points
+    else:
+        return points.float()
+
+
 def _sample_default(N, scale=1.1):
     """Generates N uniform random samples from a cube with passed scale. All points outside unit cube.
 
@@ -83,7 +118,8 @@ def _sample_default(N, scale=1.1):
 
     # Sample twice the expected number of points necessary to achieve N
     approx_necessary_samples = int(2 * N * (1.0 / (1.0 - approx)))
-    points = (torch.rand(approx_necessary_samples, 3)*2 - 1)*scale
+    points = (torch.rand(approx_necessary_samples, 3,
+                         device=os.environ["TORCH_DEVICE"])*2 - 1)*scale
 
     # Discard points inside unitcube
     points = _limit_to_domain(points)

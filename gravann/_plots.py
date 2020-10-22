@@ -9,10 +9,8 @@ pv.set_plot_theme("night")
 
 def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
 
-    print("Computing model mesh...", end="")
     model_mesh = create_mesh_from_model(
         model, encoding, rho_threshold=1.5e-2, plot_each_it=-1)
-    print("Done.")
 
     p = pv.Plotter(shape=(1, 2))
 

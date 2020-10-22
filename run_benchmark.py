@@ -8,6 +8,7 @@ import torch
 import numpy as np
 import pickle as pk
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
 from gravann import normalized_loss, mse_loss
@@ -22,7 +23,7 @@ from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"    # Select GPUs
 OUTPUT_FOLDER = "results/"                  # Where results will be stored
 SAMPLE_PATH = "mascons/"                    # Mascon folder
-ITERATIONS = 500                            # Number of training iterations
+ITERATIONS = 1000                            # Number of training iterations
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")     # Use all available samples
 SAMPLES = [                                 # Use some specific samples
     #    "mascons/Eros.pk",
@@ -30,7 +31,7 @@ SAMPLES = [                                 # Use some specific samples
     #    "mascons/Itokawa.pk",
     "mascons/sample_01_cluster_2400.pk",
     "mascons/sample_02_cluster_5486.pk"]
-N_INTEGR_POINTS = 10000                 # Number of integrations points for U
+N_INTEGR_POINTS = 30000                 # Number of integrations points for U
 TARGET_SAMPLER = ["spherical",          # How to sample target points
                   #   "cubical",
                   ]
@@ -54,28 +55,33 @@ ACTIVATION = [                          # Activation function on the last layer
     torch.nn.Sigmoid(),
     torch.nn.Softplus(),
     # torch.nn.Tanh(),
-    torch.nn.LeakyReLU(),
+    # torch.nn.LeakyReLU(),
 ]
 SAVE_PLOTS = True                       # If plots should be saved.
 
+RESULTS = pd.DataFrame(columns=["Sample", "Type", "Loss", "Encoding", "Integrator", "Activation",
+                                "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss", "Final Running Loss", "Final WeightedAvg Loss"])
+
 
 def run():
-    print("Initializing...")
-
+    print("#############  Initializing    ################")
     print("Using the following samples:", SAMPLES)
+    print("###############################################")
 
     # Enable CUDA
     enableCUDA()
     device = os.environ["TORCH_DEVICE"]
     print("Will use device ", device)
-
+    print("###############################################")
     # Make output folders
     print("Making folder structre...", end="")
     _make_folders()
+    print("###############################################")
+
+    run_counter = 0  # Counting number of total runs
 
     for sample in SAMPLES:
-        print("")
-        print(f"--------------- STARTING {sample} ----------------")
+        print(f"\n--------------- STARTING {sample} ----------------")
         points, masses = _load_sample(sample)
 
         if SAVE_PLOTS:
@@ -92,24 +98,28 @@ def run():
                         for target_sample_method in TARGET_SAMPLER:
                             for activation in ACTIVATION:
                                 print(
-                                    f"------------ RUNNING CONFIG ----------------")
+                                    f"\n ------------ RUNNING CONFIG {run_counter} --------------")
                                 print(
-                                    f"|LR={lr}|\t\tloss={loss.__name__}|\t\tencoding={encoding.__name__}|")
+                                    f"|LR={lr}\t\t\tloss={loss.__name__}\t\tencoding={encoding.__name__}|")
                                 print(
-                                    f"target_sample={target_sample_method}|\tactivation={str(activation)[:-2]}|\tbatch_size={batch_size}")
+                                    f"|target_sample={target_sample_method}\tactivation={str(activation)[:-2]}\t\tbatch_size={batch_size}|")
                                 print(
                                     f"--------------------------------------------")
                                 _run_configuration(lr, loss, encoding, batch_size,
-                                                   sample, points, masses, target_sample_method, activation, mesh)
+                                                   sample, points, masses, target_sample_method, activation, mesh, run_counter)
+                                run_counter += 1
         print("###############################################")
         print("#############       SAMPLE DONE     ###########")
         print("###############################################")
+
+    print(f"Writing results csv to {OUTPUT_FOLDER}")
+    RESULTS.to_csv(OUTPUT_FOLDER + "/" + "results.csv")
     print("###############################################")
     print("#############   TUTTO FATTO :)    #############")
     print("###############################################")
 
 
-def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses, target_sample_method, activation, mesh):
+def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses, target_sample_method, activation, mesh, index):
     # Clear GPU memory
     torch.cuda.empty_cache()
 
@@ -171,6 +181,16 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         _save_plots(model, encoding(), mesh, loss_log,
                     running_loss_log, weighted_average_log, n_inferences, run_folder)
 
+    # store in results dataframe
+    global RESULTS
+    RESULTS = RESULTS.append(
+        {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Loss": loss_fn.__name__, "Encoding": encoding.__name__,
+         "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
+         "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS,
+         "Final Loss": loss_log[-1], "Final Running Loss": running_loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1]},
+        ignore_index=True
+    )
+
 
 def _make_folders():
     dt_string = datetime.now().strftime("%d_%m_%Y_%H.%M.%S")
@@ -209,7 +229,6 @@ def _save_results(loss_log, running_loss_log, weighted_average_log, model, folde
 
 
 def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_average_log, n_inferences, folder):
-    print("Creating plots...")
 
     print("Creating mesh plots...", end="")
     plot_model_vs_cloud_mesh(model, gt_mesh, encoding,

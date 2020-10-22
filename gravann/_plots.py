@@ -7,6 +7,32 @@ import pyvistaqt as pvqt
 pv.set_plot_theme("night")
 
 
+def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
+
+    print("Computing model mesh...", end="")
+    model_mesh = create_mesh_from_model(
+        model, encoding, rho_threshold=1.5e-2, plot_each_it=-1)
+    print("Done.")
+
+    p = pv.Plotter(shape=(1, 2))
+
+    p.subplot(0, 0)
+    p.show_grid()
+    p.add_text("Model Prediction", font_size=12)
+    p.add_mesh(model_mesh, color="grey", show_edges=False, smooth_shading=True)
+
+    p.subplot(0, 1)
+    p.show_grid()
+    p.add_text("Ground Truth", font_size=12)
+    p.add_mesh(gt_mesh, color="grey", show_edges=False, smooth_shading=True)
+
+    if save_path is None:
+        p.show()
+    else:
+        p.save_graphic(save_path, title="")
+        p.close()
+
+
 def plot_points(points):
     """Creates a 3D scatter plot of passed points.     
 

@@ -30,8 +30,10 @@ from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 # Import the labeling functions the mascons
 from ._mascon_labels import U_L, ACC_L
 
+# Import training utility functions
 from ._train import init_network, train_on_batch
 
+# Import utility functions
 from ._utils import max_min_distance, enableCUDA
 
 # Set main device by default to cpu if no other choice was made before

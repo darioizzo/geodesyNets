@@ -8,7 +8,14 @@ pv.set_plot_theme("night")
 
 
 def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
+    """Creates a side by side of the model and the ground truth mesh passed to this
 
+    Args:
+        model (torch nn): trained model
+        gt_mesh (pyvista mesh): ground-truth mesh
+        encoding (func): encoding function for the model
+        save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+    """
     model_mesh = create_mesh_from_model(
         model, encoding, rho_threshold=1.5e-2, plot_each_it=-1)
 
@@ -42,6 +49,7 @@ def plot_points(points):
     ax.scatter(points[:, 0].cpu().numpy(),
                points[:, 1].cpu().numpy(),
                points[:, 2].cpu().numpy())
+    plt.show()
 
 
 def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
@@ -214,7 +222,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
     plt.show()
 
 
-def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100):
+def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100, save_path=None):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
     as a probability distribution and performing a rejection sampling approach
 
@@ -227,6 +235,7 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
         alpha (float): alpha for the visualization
         crop_p (float): all points below this density are rejected
         s (int): size of the non rejected points visualization
+        save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
     """
     points = torch.rand(N, 3) * 2 - 1
     nn_inputs = encoding(points)
@@ -272,4 +281,7 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
 
-    plt.show()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+    else:
+        plt.show()

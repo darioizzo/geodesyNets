@@ -17,7 +17,7 @@ from gravann import U_L
 from gravann import enableCUDA, max_min_distance
 from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
-from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh
+from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"    # Select GPUs
@@ -26,25 +26,26 @@ SAMPLE_PATH = "mascons/"                    # Mascon folder
 ITERATIONS = 1000                            # Number of training iterations
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")     # Use all available samples
 SAMPLES = [                                 # Use some specific samples
-    #    "mascons/Eros.pk",
-    #    "mascons/Churyumov–Gerasimenko.pk",
-    #    "mascons/Itokawa.pk",
-    "mascons/sample_01_cluster_2400.pk",
-    "mascons/sample_02_cluster_5486.pk"]
-N_INTEGR_POINTS = 30000                 # Number of integrations points for U
+    # "mascons/Eros.pk",
+    # "mascons/Churyumov–Gerasimenko.pk",
+    # "mascons/Itokawa.pk",
+    # "mascons/sample_01_cluster_2400.pk",
+    "mascons/sample_02_cluster_5486.pk"
+]
+N_INTEGR_POINTS = 500000                 # Number of integrations points for U
 TARGET_SAMPLER = ["spherical",          # How to sample target points
                   #   "cubical",
                   ]
 SAMPLE_DOMAIN = [1.0,                   # Defines the distance of target points
                  1.1]
-BATCH_SIZES = [100]                     # For training
+BATCH_SIZES = [1000]                     # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
     normalized_loss,
     #   mse_loss
 ]
 
-ENCODINGS = [                           # Encodings to test
+ENCODINGS = [                           # Encodings to test (positional currently N/A because it needs one more parameter)
     directional_encoding,
     # direct_encoding,
     # spherical_coordinates
@@ -53,25 +54,29 @@ USE_ACC = False                         # Use acceleration instead of U (TODO)
 INTEGRATOR = U_trap_opt
 ACTIVATION = [                          # Activation function on the last layer
     torch.nn.Sigmoid(),
-    torch.nn.Softplus(),
+    # torch.nn.Softplus(),
     # torch.nn.Tanh(),
     # torch.nn.LeakyReLU(),
 ]
 SAVE_PLOTS = True                       # If plots should be saved.
 
 RESULTS = pd.DataFrame(columns=["Sample", "Type", "Loss", "Encoding", "Integrator", "Activation",
-                                "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss", "Final Running Loss", "Final WeightedAvg Loss"])
+                                "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss",
+                                "Final Running Loss", "Final WeightedAvg Loss"])
+
+
+TOTAL_RUNS = len(ACTIVATION) * len(ENCODINGS) * len(LOSSES) * \
+    len(LRs) * len(BATCH_SIZES) * len(TARGET_SAMPLER) * len(SAMPLES)
 
 
 def run():
+    """This function runs all the permutations of above settings
+    """
     print("#############  Initializing    ################")
     print("Using the following samples:", SAMPLES)
     print("###############################################")
-
-    # Enable CUDA
     enableCUDA()
-    device = os.environ["TORCH_DEVICE"]
-    print("Will use device ", device)
+    print("Will use device ", os.environ["TORCH_DEVICE"])
     print("###############################################")
     # Make output folders
     print("Making folder structre...", end="")
@@ -87,7 +92,7 @@ def run():
         if SAVE_PLOTS:
             print(f"Creating mesh for plots...", end="")
             mesh = create_mesh_from_cloud(points.cpu().numpy(
-            ), use_top_k=5, distance_threshold=0.125, plot_each_it=-1, subdivisions=5)
+            ), use_top_k=5, distance_threshold=0.125, plot_each_it=-1, subdivisions=6)
             print("Done.")
         else:
             mesh = None
@@ -97,8 +102,9 @@ def run():
                     for batch_size in BATCH_SIZES:
                         for target_sample_method in TARGET_SAMPLER:
                             for activation in ACTIVATION:
+                                run_counter += 1
                                 print(
-                                    f"\n ------------ RUNNING CONFIG {run_counter} --------------")
+                                    f"\n ---------- RUNNING CONFIG {run_counter} / {TOTAL_RUNS} -------------")
                                 print(
                                     f"|LR={lr}\t\t\tloss={loss.__name__}\t\tencoding={encoding.__name__}|")
                                 print(
@@ -106,20 +112,33 @@ def run():
                                 print(
                                     f"--------------------------------------------")
                                 _run_configuration(lr, loss, encoding, batch_size,
-                                                   sample, points, masses, target_sample_method, activation, mesh, run_counter)
-                                run_counter += 1
+                                                   sample, points, masses, target_sample_method, activation, mesh)
         print("###############################################")
         print("#############       SAMPLE DONE     ###########")
         print("###############################################")
 
-    print(f"Writing results csv to {OUTPUT_FOLDER}")
+    print(f"Writing results csv to {OUTPUT_FOLDER}. \n")
     RESULTS.to_csv(OUTPUT_FOLDER + "/" + "results.csv")
     print("###############################################")
     print("#############   TUTTO FATTO :)    #############")
     print("###############################################")
 
 
-def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses, target_sample_method, activation, mesh, index):
+def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses, target_sample_method, activation, mesh):
+    """Runs a specific parameter configur
+
+    Args:
+        lr (float): learning rate
+        loss_fn (func): Loss function to call
+        encoding (func): Encoding function to call
+        batch_size (int): Number of target points per batch
+        sample (str): Name of the sample to run
+        points (torch tensor): Points of the mascon model
+        masses (torch tensor): Masses of the mascon model
+        target_sample_method (str): Sampling method to use for target points
+        activation (Torch fun): Activation function on last network layer
+        mesh (pyvista mesh): Mesh of the sample
+    """
     # Clear GPU memory
     torch.cuda.empty_cache()
 
@@ -193,6 +212,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
 
 
 def _make_folders():
+    """Creates a folder for each sample that will be run
+    """
     dt_string = datetime.now().strftime("%d_%m_%Y_%H.%M.%S")
     global OUTPUT_FOLDER
     OUTPUT_FOLDER = OUTPUT_FOLDER + "/" + dt_string + "/"
@@ -206,6 +227,14 @@ def _make_folders():
 
 
 def _load_sample(sample):
+    """Loads the mascon model of the sample
+
+    Args:
+        sample (str): Sample to load
+
+    Returns:
+        torch tensors: points and masses of the sample
+    """
     with open(sample, "rb") as file:
         points, masses, name = pk.load(file)
 
@@ -220,6 +249,15 @@ def _load_sample(sample):
 
 
 def _save_results(loss_log, running_loss_log, weighted_average_log, model, folder):
+    """Stores the results of a run
+
+    Args:
+        loss_log (list): list of losses recorded
+        running_loss_log (list): list of running losses recorded
+        weighted_average_log (list): list of weighted average losses recorded
+        model (torch model): Torch model that was trained
+        folder (str): results folder of the run
+    """
     print(f"Saving run results to {folder} ...", end="")
     np.save(folder+"loss_log.npy", loss_log)
     np.save(folder+"running_loss_log.npy", loss_log)
@@ -229,13 +267,28 @@ def _save_results(loss_log, running_loss_log, weighted_average_log, model, folde
 
 
 def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_average_log, n_inferences, folder):
+    """Creates plots using the model and stores them
 
+    Args:
+        model (torch nn): trained model
+        encoding (func): encoding function
+        gt_mesh ([type]): ground truth mesh of the sample
+        loss_log (list): list of losses recorded
+        running_loss_log (list): list of running losses recorded
+        weighted_average_log (list): list of weighted average losses recorded
+        n_inferences (list): list of number of model evaluations
+        folder (str): results folder of the run
+    """
     print("Creating mesh plots...", end="")
     plot_model_vs_cloud_mesh(model, gt_mesh, encoding,
                              save_path=folder + "mesh_plot.pdf")
     print("Done.")
 
-    # Plot the loss history
+    print("Creating rejection plot...", end="")
+    plot_model_rejection(model, encoding, views_2d=True,
+                         bw=True, N=50000, crop_p=0.1, alpha=0.1, s=50, save_path=folder + "rejection_plot.png")
+    print("Done.")
+
     print("Creating loss plots...", end="")
     plt.figure()
     abscissa = np.cumsum(n_inferences)

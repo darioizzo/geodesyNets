@@ -23,22 +23,22 @@ from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"    # Select GPUs
 OUTPUT_FOLDER = "results/"                  # Where results will be stored
 SAMPLE_PATH = "mascons/"                    # Mascon folder
-ITERATIONS = 1000                            # Number of training iterations
+ITERATIONS = 100                            # Number of training iterations
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")     # Use all available samples
 SAMPLES = [                                 # Use some specific samples
     # "mascons/Eros.pk",
     # "mascons/Churyumov–Gerasimenko.pk",
     # "mascons/Itokawa.pk",
-    # "mascons/sample_01_cluster_2400.pk",
-    "mascons/sample_02_cluster_5486.pk"
+    "mascons/sample_01_cluster_2400.pk"
+    # "mascons/sample_02_cluster_5486.pk"
 ]
-N_INTEGR_POINTS = 500000                 # Number of integrations points for U
+N_INTEGR_POINTS = 30000                 # Number of integrations points for U
 TARGET_SAMPLER = ["spherical",          # How to sample target points
                   #   "cubical",
                   ]
 SAMPLE_DOMAIN = [1.0,                   # Defines the distance of target points
                  1.1]
-BATCH_SIZES = [1000]                     # For training
+BATCH_SIZES = [100]                     # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
     normalized_loss,
@@ -89,13 +89,13 @@ def run():
         print(f"\n--------------- STARTING {sample} ----------------")
         points, masses = _load_sample(sample)
 
-        if SAVE_PLOTS:
-            print(f"Creating mesh for plots...", end="")
-            mesh = create_mesh_from_cloud(points.cpu().numpy(
-            ), use_top_k=5, distance_threshold=0.125, plot_each_it=-1, subdivisions=6)
-            print("Done.")
-        else:
-            mesh = None
+        # if SAVE_PLOTS:
+        #print(f"Creating mesh for plots...", end="")
+        # mesh = create_mesh_from_cloud(points.cpu().numpy(
+        # ), use_top_k=5, distance_threshold=0.125, plot_each_it=-1, subdivisions=6)
+        # print("Done.")
+        # else:
+        mesh = None
         for lr in LRs:
             for loss in LOSSES:
                 for encoding in ENCODINGS:
@@ -279,10 +279,10 @@ def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_a
         n_inferences (list): list of number of model evaluations
         folder (str): results folder of the run
     """
-    print("Creating mesh plots...", end="")
-    plot_model_vs_cloud_mesh(model, gt_mesh, encoding,
-                             save_path=folder + "mesh_plot.pdf")
-    print("Done.")
+    #print("Creating mesh plots...", end="")
+    # plot_model_vs_cloud_mesh(model, gt_mesh, encoding,
+    #                         save_path=folder + "mesh_plot.pdf")
+    # print("Done.")
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,

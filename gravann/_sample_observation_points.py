@@ -37,7 +37,7 @@ def _get_spherical_grid(N, radius=1.73205):
 
     Args:
         N (int): Approximate number of points to create (lower square nr below will be selected in practice)
-        radius (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube..
+        radius (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube.
 
     Returns:
         [torch tensor]: Points on the sphere.
@@ -80,7 +80,7 @@ def _sample_spherical(N, radius_bounds=[1.73205, 1.73205]):
 
     Args:
         N (int): Number of points to create
-        radius_bounds (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube..
+        radius_bounds (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube.
 
     Returns:
         Torch tensor: Sampled points

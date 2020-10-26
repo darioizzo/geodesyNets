@@ -244,6 +244,9 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
     RHO = RHO[mask]
     points = [[it[0].item(), it[1].item(), it[2].item()]
               for it, m in zip(points, mask) if m]
+    if len(points) == 0:
+        print("All points rejected! Plot is empty, try cropping less?")
+        return
     points = torch.tensor(points)
     fig = plt.figure()
     if views_2d:

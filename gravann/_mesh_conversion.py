@@ -91,7 +91,7 @@ def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=
     it = 0
 
     while any(point_to_compute) and it < max_iter:
-        if it % plot_each_it == 0:
+        if it % plot_each_it == 0 and plot_each_it > 0:
             print(
                 f"Iteration {it} - {sum(point_to_compute)} Travelling Vertices")
 
@@ -133,7 +133,7 @@ def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=
             else:
                 stepsize = 0.00001 + 0.1 * np.stack([dst, dst, dst], axis=1)
 
-        if it % plot_each_it == 0:
+        if it % plot_each_it == 0 and plot_each_it > 0:
             p = pv.Plotter(window_size=[200, 100])
             p.add_mesh(cube, color="grey", show_edges=False)
             p.show()
@@ -182,7 +182,7 @@ def create_mesh_from_model(model, encoding, cube_scale=1.5, subdivisions=6,  # m
     it = 0
 
     while any(point_to_compute) and it < max_iter:
-        if it % plot_each_it == 0:
+        if it % plot_each_it == 0 and plot_each_it > 0:
             print(
                 f"Iteration {it} - {sum(point_to_compute)} Travelling Vertices")
 
@@ -215,7 +215,7 @@ def create_mesh_from_model(model, encoding, cube_scale=1.5, subdivisions=6,  # m
         if verbose:
             print("cube.points", cube.points)
 
-        if it % plot_each_it == 0:
+        if it % plot_each_it == 0 and plot_each_it > 0:
             p = pv.Plotter(window_size=[200, 100])
             p.add_mesh(cube, color="grey", show_edges=False)
             p.show()

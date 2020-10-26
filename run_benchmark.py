@@ -19,35 +19,37 @@ from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection
 
+EXPERIMENT_ID = "run_26_10_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"    # Select GPUs
-OUTPUT_FOLDER = "results/"                  # Where results will be stored
-SAMPLE_PATH = "mascons/"                    # Mascon folder
-ITERATIONS = 100                            # Number of training iterations
-# SAMPLES = glob(SAMPLE_PATH + "/*.pk")     # Use all available samples
-SAMPLES = [                                 # Use some specific samples
-    # "mascons/Eros.pk",
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
+OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
+SAMPLE_PATH = "mascons/"                            # Mascon folder
+# Number of training iterations
+ITERATIONS = 1000
+# SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
+SAMPLES = [                                         # Use some specific samples
+    "mascons/Eros.pk",
     # "mascons/Churyumov–Gerasimenko.pk",
     # "mascons/Itokawa.pk",
-    "mascons/sample_01_cluster_2400.pk"
+    # "mascons/sample_01_cluster_2400.pk"
     # "mascons/sample_02_cluster_5486.pk"
 ]
-N_INTEGR_POINTS = 30000                 # Number of integrations points for U
+N_INTEGR_POINTS = 800000                # Number of integrations points for U
 TARGET_SAMPLER = ["spherical",          # How to sample target points
                   #   "cubical",
                   ]
 SAMPLE_DOMAIN = [1.0,                   # Defines the distance of target points
                  1.1]
-BATCH_SIZES = [100]                     # For training
+BATCH_SIZES = [1000]                     # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
     normalized_loss,
-    #   mse_loss
+    mse_loss
 ]
 
 ENCODINGS = [                           # Encodings to test (positional currently N/A because it needs one more parameter)
     directional_encoding,
-    # direct_encoding,
+    direct_encoding,
     # spherical_coordinates
 ]
 USE_ACC = False                         # Use acceleration instead of U (TODO)
@@ -214,9 +216,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
 def _make_folders():
     """Creates a folder for each sample that will be run
     """
-    dt_string = datetime.now().strftime("%d_%m_%Y_%H.%M.%S")
     global OUTPUT_FOLDER
-    OUTPUT_FOLDER = OUTPUT_FOLDER + "/" + dt_string + "/"
     pathlib.Path(OUTPUT_FOLDER).mkdir(parents=True, exist_ok=True)
 
     for sample in SAMPLES:

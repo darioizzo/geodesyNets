@@ -287,7 +287,7 @@ def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_a
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,
-                         bw=True, N=100000, crop_p=0.2, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c)
+                         bw=True, N=100000, crop_p=0.2, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c=c)
     print("Done.")
 
     print("Creating loss plots...", end="")

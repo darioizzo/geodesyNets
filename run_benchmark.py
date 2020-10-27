@@ -173,7 +173,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=0.5, patience=1000, min_lr=5e-6, verbose=False)
 
-    t = tqdm(range(ITERATIONS), ncols=20)
+    t = tqdm(range(ITERATIONS), ncols=150)
     for it in t:
         # Sample target points
         targets = targets_point_sampler()

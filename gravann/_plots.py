@@ -155,7 +155,7 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     plt.show()
 
 
-def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
+def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c=1.):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube showing
     the density value on a grid.
 
@@ -166,6 +166,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
         bw (bool): when True considers zero density as white and transparent. The final effect is a black and white plot
         alpha (float): alpha for the visualization
         views_2d (bool): activates also the 2d projections
+        c (float, optional): Normalization constant. Defaults to 1.
 
     """
 
@@ -179,7 +180,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
     nn_inputs = torch.cat(
         (X.reshape(-1, 1), Y.reshape(-1, 1), Z.reshape(-1, 1)), dim=1)
     nn_inputs = encoding(nn_inputs)
-    RHO = model(nn_inputs).detach()
+    RHO = model(nn_inputs).detach()*c
 
     # And we plot it
     fig = plt.figure()
@@ -222,7 +223,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True):
     plt.show()
 
 
-def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100, save_path=None):
+def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100, save_path=None, c=1.):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
     as a probability distribution and performing a rejection sampling approach
 
@@ -236,10 +237,12 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
         crop_p (float): all points below this density are rejected
         s (int): size of the non rejected points visualization
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+        c (float, optional): Normalization constant. Defaults to 1.
+
     """
     points = torch.rand(N, 3) * 2 - 1
     nn_inputs = encoding(points)
-    RHO = model(nn_inputs).detach()
+    RHO = model(nn_inputs).detach() * c
     mask = RHO > (torch.rand(N, 1) + crop_p)
     RHO = RHO[mask]
     points = [[it[0].item(), it[1].item(), it[2].item()]

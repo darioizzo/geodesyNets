@@ -19,7 +19,7 @@ from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection
 
-EXPERIMENT_ID = "run_26_10_2020"
+EXPERIMENT_ID = "run_27_10_2020"
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
@@ -35,9 +35,9 @@ SAMPLES = [                                         # Use some specific samples
     # "mascons/sample_02_cluster_5486.pk"
 ]
 N_INTEGR_POINTS = 800000                # Number of integrations points for U
-TARGET_SAMPLER = ["spherical",          # How to sample target points
-                  #   "cubical",
-                  ]
+TARGET_SAMPLER = [  # "spherical",          # How to sample target points
+    "cubical",
+]
 SAMPLE_DOMAIN = [1.0,                   # Defines the distance of target points
                  1.1]
 BATCH_SIZES = [1000]                     # For training
@@ -176,7 +176,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         # Sample target points
         targets = targets_point_sampler()
         labels = U_L(targets, points, masses)
-
+        c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
         # Train
         loss = train_on_batch(targets, labels, model, encoding(),
                               loss_fn, optimizer, scheduler, INTEGRATOR, N_INTEGR_POINTS)
@@ -193,14 +193,14 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         wa_out = np.mean(weighted_average)
 
         t.set_postfix_str(
-            f"Loss={loss.item():.8f} | WeightedAvg={wa_out:.8f}\t | Running Loss={running_loss:.8f}")
+            f"Loss={loss.item():.3e} | WeightedAvg={wa_out:.3e}\t | c={c:.3e}")
 
     _save_results(loss_log, running_loss_log,
                   weighted_average_log, model, run_folder)
 
     if SAVE_PLOTS:
         _save_plots(model, encoding(), mesh, loss_log,
-                    running_loss_log, weighted_average_log, n_inferences, run_folder)
+                    running_loss_log, weighted_average_log, n_inferences, run_folder, c)
 
     # store in results dataframe
     global RESULTS
@@ -266,7 +266,7 @@ def _save_results(loss_log, running_loss_log, weighted_average_log, model, folde
     print("Done.")
 
 
-def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_average_log, n_inferences, folder):
+def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_average_log, n_inferences, folder, c):
     """Creates plots using the model and stores them
 
     Args:
@@ -286,7 +286,7 @@ def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_a
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,
-                         bw=True, N=50000, crop_p=0.1, alpha=0.1, s=50, save_path=folder + "rejection_plot.png")
+                         bw=True, N=100000, crop_p=0.2, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c)
     print("Done.")
 
     print("Creating loss plots...", end="")

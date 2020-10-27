@@ -25,15 +25,17 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
-ITERATIONS = 1000
+ITERATIONS = 3000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
     "mascons/Eros.pk",
-    # "mascons/Churyumov–Gerasimenko.pk",
+    #"mascons/Churyumov   ^`^sGerasimenko.pk",
     # "mascons/Itokawa.pk",
-    # "mascons/sample_01_cluster_2400.pk"
-    # "mascons/sample_02_cluster_5486.pk"
+    # "mascons/sample_01_cluster_2400.pk",
+    # "mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    # "mascons/sample_08_cluster_1970.pk"
 ]
+
 N_INTEGR_POINTS = 800000                # Number of integrations points for U
 TARGET_SAMPLER = [  # "spherical",          # How to sample target points
     "cubical",
@@ -176,10 +178,9 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         # Sample target points
         targets = targets_point_sampler()
         labels = U_L(targets, points, masses)
-        c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
         # Train
-        loss = train_on_batch(targets, labels, model, encoding(),
-                              loss_fn, optimizer, scheduler, INTEGRATOR, N_INTEGR_POINTS)
+        loss, c = train_on_batch(targets, labels, model, encoding(),
+                                 loss_fn, optimizer, scheduler, INTEGRATOR, N_INTEGR_POINTS)
 
         # Update the loss trend indicators
         running_loss = 0.9 * running_loss + 0.1 * loss.item()

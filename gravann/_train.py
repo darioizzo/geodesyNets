@@ -1,4 +1,5 @@
 from torch import nn
+import torch
 
 
 def _weights_init(m):
@@ -72,6 +73,7 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     """
     # Compute the loss (use N=3000 to start with, then, eventually, beef it up to 200000)
     predicted = integrator(targets, model, encoding, N=N)
+    c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
     loss = loss_fn(predicted, labels)
 
     # Before the backward pass, use the optimizer object to zero all of the
@@ -92,4 +94,4 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     # Perform a step in LR scheduler to update LR
     scheduler.step(loss.item())
 
-    return loss
+    return loss, c

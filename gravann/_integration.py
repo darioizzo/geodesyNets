@@ -86,9 +86,11 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
         target_points (2-D array-like): a (N,3) array-like object containing the points.
         model (callable (a,b)->1): neural model for the asteroid. 
         encoding: the encoding for the neural inputs.
-        N (int): number of points.
+        N (int): number of points. If a grid is passed should match that
         verbose (bool, optional): Print intermediate results. Defaults to False.
         noise (float): random noise added to point positions.
+        sample_points (torch tensor): grid to sample the integral on
+        h (float): grid spacing, only has to be passed if grid is passed.
 
     Returns:
         Tensor: Computed potentials per point
@@ -167,6 +169,21 @@ def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5)
 
 
 def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None):
+    """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
+
+    Args:
+        target_points (2-D array-like): a (N,3) array-like object containing the points.
+        model (callable (a,b)->1): neural model for the asteroid. 
+        encoding: the encoding for the neural inputs.
+        N (int): number of points. If a grid is passed should match that
+        verbose (bool, optional): Print intermediate results. Defaults to False.
+        noise (float): random noise added to point positions.
+        sample_points (torch tensor): grid to sample the integral on
+        h (float): grid spacing, only has to be passed if grid is passed.
+
+    Returns:
+        Tensor: Computed potentials per point
+    """
     # init result vector
     retval = torch.empty(len(target_points), 3,
                          device=os.environ["TORCH_DEVICE"])
@@ -202,7 +219,16 @@ def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=
     return -retval
 
 
-def compute_integration_grid(N, noise=0):
+def compute_integration_grid(N, noise=0.0):
+    """Creates a grid which can be used for the trapezoid integration
+
+    Args:
+        N (int): Number of points to approximately  generate
+        noise (float, optional): Amount of noise to add to points (can be used to sample nearby points). Defaults to 0.
+
+    Returns:
+        torch tensor, float, int: sample points, grid h, nr of points
+    """
     N = int(np.round(np.cbrt(N)))  # approximate subdivisions
 
     # Create grid and assemble evaluation points

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import os
 
 
@@ -17,6 +18,13 @@ def enableCUDA(device=0):
     else:
         warnings.warn(
             "Error enabling CUDA. cuda.is_available() returned False. CPU will be used.")
+
+
+def fixRandomSeeds():
+    """This function sets the random seeds in torch and numpy to enable reproducible behavior.
+    """
+    torch.manual_seed(42)
+    np.random.seed(42)
 
 
 def max_min_distance(points):

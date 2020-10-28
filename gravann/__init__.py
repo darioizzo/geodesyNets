@@ -34,7 +34,7 @@ from ._mascon_labels import U_L, ACC_L
 from ._train import init_network, train_on_batch
 
 # Import utility functions
-from ._utils import max_min_distance, enableCUDA
+from ._utils import max_min_distance, enableCUDA, fixRandomSeeds
 
 # Set main device by default to cpu if no other choice was made before
 if "TORCH_DEVICE" not in os.environ:

@@ -14,7 +14,7 @@ from gravann import directional_encoding, positional_encoding, direct_encoding, 
 from gravann import normalized_loss, mse_loss
 from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points
 from gravann import U_L
-from gravann import enableCUDA, max_min_distance
+from gravann import enableCUDA, max_min_distance, fixRandomSeeds
 from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection
@@ -145,6 +145,9 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
     """
     # Clear GPU memory
     torch.cuda.empty_cache()
+
+    # Fix the random seeds for this run
+    fixRandomSeeds()
 
     # Create folder for this specific run
     run_folder = OUTPUT_FOLDER + \

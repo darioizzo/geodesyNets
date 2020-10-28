@@ -21,19 +21,19 @@ from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model
 
 EXPERIMENT_ID = "run_27_10_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "8"            # Select GPUs
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 3000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    "mascons/Eros.pk",
-    #"mascons/Churyumov   ^`^sGerasimenko.pk",
-    # "mascons/Itokawa.pk",
-    # "mascons/sample_01_cluster_2400.pk",
-    # "mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
-    # "mascons/sample_08_cluster_1970.pk"
+    #"mascons/Eros.pk",
+    #"mascons/Churyumov-Gerasimenko.pk",
+    #"mascons/Itokawa.pk",
+    #"mascons/sample_01_cluster_2400.pk",
+    #"mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    "mascons/sample_08_cluster_1970.pk"
 ]
 
 N_INTEGR_POINTS = 800000                # Number of integrations points for U

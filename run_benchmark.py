@@ -14,26 +14,26 @@ from gravann import directional_encoding, positional_encoding, direct_encoding, 
 from gravann import normalized_loss, mse_loss
 from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points
 from gravann import U_L
-from gravann import enableCUDA, max_min_distance
+from gravann import enableCUDA, max_min_distance, fixRandomSeeds
 from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection
 
 EXPERIMENT_ID = "run_27_10_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "8"            # Select GPUs
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 3000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    "mascons/Eros.pk",
-    #"mascons/Churyumov   ^`^sGerasimenko.pk",
-    # "mascons/Itokawa.pk",
-    # "mascons/sample_01_cluster_2400.pk",
-    # "mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
-    # "mascons/sample_08_cluster_1970.pk"
+    #"mascons/Eros.pk",
+    #"mascons/Churyumov-Gerasimenko.pk",
+    #"mascons/Itokawa.pk",
+    #"mascons/sample_01_cluster_2400.pk",
+    #"mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    "mascons/sample_08_cluster_1970.pk"
 ]
 
 N_INTEGR_POINTS = 800000                # Number of integrations points for U
@@ -145,6 +145,9 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
     """
     # Clear GPU memory
     torch.cuda.empty_cache()
+
+    # Fix the random seeds for this run
+    fixRandomSeeds()
 
     # Create folder for this specific run
     run_folder = OUTPUT_FOLDER + \

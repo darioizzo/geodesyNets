@@ -1,7 +1,9 @@
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 import torch
 import math
+import numpy as np
 import pyvista as pv
 import pyvistaqt as pvqt
 pv.set_plot_theme("night")
@@ -291,3 +293,125 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
         plt.savefig(save_path, dpi=150)
     else:
         plt.show()
+
+
+def plot_gradients_per_layer(model):
+    """Plots mean and max gradients per layer currently stored in model params. Inspired by https://github.com/alwynmathew/gradflow-check
+
+    Args:
+        model (torch model): Trained network
+    """
+    named_params = model.named_parameters()
+    fig = plt.figure()
+    avg_gradient, max_gradient, layers = [], [], []
+    for name, parameter in named_params:
+        if(parameter.requires_grad) and ("bias" not in name):
+            layers.append(name)
+            avg_gradient.append(parameter.grad.abs().mean())
+            max_gradient.append(parameter.grad.abs().max())
+    plt.bar(np.arange(len(max_gradient)),
+            max_gradient, alpha=0.5, lw=1, color="lime")
+    plt.bar(np.arange(len(max_gradient)),
+            avg_gradient, alpha=0.5, lw=1, color="b")
+    plt.hlines(0, 0, len(avg_gradient)+1, lw=2, color="k")
+    plt.xticks(range(0, len(avg_gradient), 1), layers, rotation="vertical")
+    plt.xlim(left=-0.5, right=len(avg_gradient))
+    # plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    plt.xlabel("Layer Name")
+    plt.ylabel("Average Gradient")
+    plt.grid(True)
+    plt.legend([Line2D([0], [0], color="lime", lw=4),
+                Line2D([0], [0], color="b", lw=4),
+                Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+
+    plt.tight_layout()
+    plt.show()
+
+    
+def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=100000, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15]):
+    """Plots both the mascon and model rejection in one figure for direct comparison
+
+    Args:
+        model (callable (N,M)->1): neural model for the asteroid. 
+        encoding: the encoding for the neural inputs.
+        points (2-D array-like): an (N, 3) array-like object containing the coordinates of the points
+        masses (1-D array-like): a (N,) array-like object containing the values for the point masses
+        N (int): number of points to be considered.
+        views_2d (bool): activates also the 2d projections
+        alpha (float): alpha for the visualization
+        crop_p (float): all points below this density are rejected
+        s (int): size of the non rejected points visualization
+        save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+        c (float, optional): Normalization constant. Defaults to 1.
+        backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
+    """
+
+    # Mascon masses
+    x = points[:, 0].cpu()
+    y = points[:, 1].cpu()
+    z = points[:, 2].cpu()
+
+    s = 22000 / len(points)
+
+    if masses is None:
+        normalized_masses = s
+    else:
+        normalized_masses = masses / sum(masses)
+        normalized_masses = (normalized_masses * s * len(x)).cpu()
+
+    # Model samples
+    points = torch.rand(N, 3) * 2 - 1
+    nn_inputs = encoding(points)
+    RHO = model(nn_inputs).detach() * c
+    mask = RHO > (torch.rand(N, 1) + crop_p)
+    RHO = RHO[mask]
+    points = [[it[0].item(), it[1].item(), it[2].item()]
+              for it, m in zip(points, mask) if m]
+    if len(points) == 0:
+        print("All points rejected! Plot is empty, try cropping less?")
+        return
+    points = torch.tensor(points)
+
+    fig = plt.figure(dpi=150, facecolor=backcolor)
+    ax = fig.add_subplot(221, projection='3d')
+    ax.set_facecolor(backcolor)
+    col = 'cornflowerblue'
+
+    # And we plot it
+    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.5)
+    ax.scatter(points[:, 0].cpu(), points[:, 1].cpu(), points[:, 2].cpu(),
+               marker='.', c=col, s=s, alpha=alpha)
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 1])
+    ax.view_init(elev=45., azim=125.)
+
+    ax2 = fig.add_subplot(222)
+    ax2.set_facecolor(backcolor)
+    ax2.scatter(x, y, color='k', s=normalized_masses, alpha=0.5)
+    ax2.scatter(points[:, 0].cpu(), points[:, 1].cpu(),
+                marker='.', c=col, s=s, alpha=alpha)
+    ax2.set_xlim([-1, 1])
+    ax2.set_ylim([-1, 1])
+
+    ax3 = fig.add_subplot(223)
+    ax3.set_facecolor(backcolor)
+    ax3.scatter(x, z, color='k', s=normalized_masses, alpha=0.5)
+    ax3.scatter(points[:, 0].cpu(), points[:, 2].cpu(),
+                marker='.', c=col, s=s, alpha=alpha)
+    ax3.set_xlim([-1, 1])
+    ax3.set_ylim([-1, 1])
+
+    ax4 = fig.add_subplot(224)
+    ax4.set_facecolor(backcolor)
+    ax4.scatter(y, z, color='k', s=normalized_masses, alpha=0.5)
+    ax4.scatter(points[:, 1].cpu(), points[:, 2].cpu(),
+                marker='.', c=col, s=s, alpha=alpha)
+    ax4.set_xlim([-1, 1])
+    ax4.set_ylim([-1, 1])
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+    else:
+        plt.show()
+

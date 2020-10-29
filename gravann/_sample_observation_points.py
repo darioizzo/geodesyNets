@@ -7,14 +7,13 @@ import os
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 
 
-def get_target_point_sampler(N, method="cubical", radius_bounds=[1.73205, 1.73205], scale_bounds=[1.0, 1.1]):
+def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2]):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 
     Args:
         N (int): Number of points to get each call
-        radius_bounds (list): Defaults to [1.73205, 1.73205]. Specifies sampling radius for "spherical" (not used in other methods)
-        scale_bounds (list): Defaults to [1.0,1.1]. Specifies sampling radius for "cubical" (not used in other methods)
+        radius_bounds (list): Defaults to [1.1, 1.2]. Specifies the sampling radius.
         method (str, optional): Utilized method. Currently supports random points from some volume
                                 (cubical, spherical) or a spherical grid (will not change each 
                                 call). Defaults to "cubical".
@@ -23,9 +22,9 @@ def get_target_point_sampler(N, method="cubical", radius_bounds=[1.73205, 1.7320
         lambda: function to call to get sampled target points
     """
     if method == "cubical":
-        return lambda: _sample_cubical(N, scale_bounds)
+        return lambda: _sample_cubical(N, bounds)
     elif method == "spherical":
-        return lambda: _sample_spherical(N, radius_bounds)
+        return lambda: _sample_spherical(N, bounds)
     elif method == "spherical_grid":
         points = _get_spherical_grid(N)
         return lambda: points
@@ -75,12 +74,12 @@ def _limit_to_domain(points, domain=[[-1, 1], [-1, 1], [-1, 1]]):
     return points[d]
 
 
-def _sample_spherical(N, radius_bounds=[1.73205, 1.73205]):
+def _sample_spherical(N, radius_bounds=[1.1, 1.2]):
     """Generates N uniform random samples inside a sphere with specified radius bounds.
 
     Args:
         N (int): Number of points to create
-        radius_bounds (float, optional): [description]. Defaults to 1.73205 which is approximately corner of unit cube.
+        radius_bounds (float, optional): [description]. Defaults to [1.1, 1.2] which will create points also inside the unit cube.
 
     Returns:
         Torch tensor: Sampled points
@@ -112,12 +111,12 @@ def _sample_spherical(N, radius_bounds=[1.73205, 1.73205]):
         return points.float()
 
 
-def _sample_cubical(N, scale_bounds=[1.0, 1.1]):
+def _sample_cubical(N, scale_bounds=[1.1, 1.2]):
     """Generates N uniform random samples from a cube with passed scale. All points outside unit cube.
 
     Args:
         N (int): Nr of points to create.
-        scale_bounds (float, optional): Scales of the domain for the points. Defaults to [1.0, 1.1].
+        scale_bounds (float, optional): Scales of the domain for the points. Defaults to [1.1, 1.2].
 
     Returns:
         Torch tensor: Sampled points

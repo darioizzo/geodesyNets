@@ -28,11 +28,11 @@ SAMPLE_PATH = "mascons/"                            # Mascon folder
 ITERATIONS = 3000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    #"mascons/Eros.pk",
-    #"mascons/Churyumov-Gerasimenko.pk",
-    #"mascons/Itokawa.pk",
-    #"mascons/sample_01_cluster_2400.pk",
-    #"mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    # "mascons/Eros.pk",
+    # "mascons/Churyumov-Gerasimenko.pk",
+    # "mascons/Itokawa.pk",
+    # "mascons/sample_01_cluster_2400.pk",
+    # "mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
     "mascons/sample_08_cluster_1970.pk"
 ]
 
@@ -169,7 +169,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
 
     # Here we set the method to sample the target points
     targets_point_sampler = get_target_point_sampler(
-        batch_size, method=target_sample_method, radius_bounds=SAMPLE_DOMAIN, scale_bounds=SAMPLE_DOMAIN)
+        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)

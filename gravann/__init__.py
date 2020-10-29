@@ -20,7 +20,8 @@ from ._hulls import alpha_shape
 # Importing the plots
 from ._plots import plot_mascon, plot_model_grid, plot_model_rejection
 from ._plots import plot_mesh, plot_model_mesh, plot_point_cloud_mesh, plot_points
-from ._plots import plot_model_vs_cloud_mesh, plot_model_vs_mascon_rejection
+from ._plots import plot_model_vs_cloud_mesh, plot_gradients_per_layer,plot_model_vs_mascon_rejection
+
 
 # Importing methods to sample points around asteroid
 from ._sample_observation_points import get_target_point_sampler

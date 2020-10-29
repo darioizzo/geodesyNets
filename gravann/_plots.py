@@ -1,7 +1,9 @@
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 import torch
 import math
+import numpy as np
 import pyvista as pv
 import pyvistaqt as pvqt
 pv.set_plot_theme("night")
@@ -293,6 +295,39 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
         plt.show()
 
 
+def plot_gradients_per_layer(model):
+    """Plots mean and max gradients per layer currently stored in model params. Inspired by https://github.com/alwynmathew/gradflow-check
+
+    Args:
+        model (torch model): Trained network
+    """
+    named_params = model.named_parameters()
+    fig = plt.figure()
+    avg_gradient, max_gradient, layers = [], [], []
+    for name, parameter in named_params:
+        if(parameter.requires_grad) and ("bias" not in name):
+            layers.append(name)
+            avg_gradient.append(parameter.grad.abs().mean())
+            max_gradient.append(parameter.grad.abs().max())
+    plt.bar(np.arange(len(max_gradient)),
+            max_gradient, alpha=0.5, lw=1, color="lime")
+    plt.bar(np.arange(len(max_gradient)),
+            avg_gradient, alpha=0.5, lw=1, color="b")
+    plt.hlines(0, 0, len(avg_gradient)+1, lw=2, color="k")
+    plt.xticks(range(0, len(avg_gradient), 1), layers, rotation="vertical")
+    plt.xlim(left=-0.5, right=len(avg_gradient))
+    # plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    plt.xlabel("Layer Name")
+    plt.ylabel("Average Gradient")
+    plt.grid(True)
+    plt.legend([Line2D([0], [0], color="lime", lw=4),
+                Line2D([0], [0], color="b", lw=4),
+                Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+
+    plt.tight_layout()
+    plt.show()
+
+    
 def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=100000, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15]):
     """Plots both the mascon and model rejection in one figure for direct comparison
 
@@ -379,3 +414,4 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=10000
         plt.savefig(save_path, dpi=150)
     else:
         plt.show()
+

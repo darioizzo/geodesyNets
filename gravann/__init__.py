@@ -15,12 +15,12 @@ from ._integration import ACC_ld, ACC_trap, U_mc, U_ld, U_trap_opt
 from ._integration import sobol_points, compute_integration_grid
 
 # Importing misc methods for 3D graphics
-from ._hulls import alpha_shape, ray_triangle_intersect, rays_triangle_intersect
+from ._hulls import alpha_shape, ray_triangle_intersect, rays_triangle_intersect, is_outside, is_inside
 
 # Importing the plots
 from ._plots import plot_mascon, plot_model_grid, plot_model_rejection
 from ._plots import plot_mesh, plot_model_mesh, plot_point_cloud_mesh, plot_points
-from ._plots import plot_model_vs_cloud_mesh, plot_gradients_per_layer,plot_model_vs_mascon_rejection
+from ._plots import plot_model_vs_cloud_mesh, plot_gradients_per_layer, plot_model_vs_mascon_rejection
 
 
 # Importing methods to sample points around asteroid

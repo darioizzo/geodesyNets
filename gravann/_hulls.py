@@ -1,5 +1,6 @@
 from scipy.spatial import Delaunay
 import numpy as np
+from copy import deepcopy
 
 
 def alpha_shape(points, alpha, only_outer=True):
@@ -141,6 +142,25 @@ def rays_triangle_intersect(ray_o, ray_d, v0, v1, v2):
     return np.logical_and(np.logical_and(crit1, crit2), crit3)
 
 
+def is_outside(points, mesh_vertices, mesh_triangles):
+    """Detects if points are outside a 3D mesh
+
+    Args:
+        points ((N,3)) np.array): points to test.
+        mesh_vertices ((M,3) np.array): vertices pf the mesh
+        mesh_triangles ((M,3) np.array): ids of each triangle
+
+    Returns:
+        np.array of boolean values determining whether the points are inside
+    """
+    counter = np.array([0]*len(points))
+    direction = np.array([0, 0, 1])
+    for t in mesh_triangles:
+        counter += rays_triangle_intersect(
+            points, direction, mesh_vertices[t[0]], mesh_vertices[t[1]], mesh_vertices[t[2]])
+    return (counter % 2) == 0
+
+
 def is_inside(points, mesh_vertices, mesh_triangles):
     """Detects if points are inside a 3D mesh
 
@@ -150,11 +170,11 @@ def is_inside(points, mesh_vertices, mesh_triangles):
         mesh_triangles ((M,3) np.array): ids of each triangle
 
     Returns:
-        boolean value determining whether the points are inside
+        np.array of boolean values determining whether the points are inside
     """
     counter = np.array([0]*len(points))
     direction = np.array([0, 0, 1])
     for t in mesh_triangles:
         counter += rays_triangle_intersect(
             points, direction, mesh_vertices[t[0]], mesh_vertices[t[1]], mesh_vertices[t[2]])
-    return counter % 2
+    return (counter % 2) == 1

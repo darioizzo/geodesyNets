@@ -11,7 +11,8 @@ from ._encodings import directional_encoding, positional_encoding, direct_encodi
 from ._losses import normalized_loss, mse_loss
 
 # Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
-from ._integration import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points
+from ._integration import ACC_ld, ACC_trap, U_mc, U_ld, U_trap_opt
+from ._integration import sobol_points, compute_integration_grid
 
 # Importing alpha shape methods
 from ._hulls import alpha_shape

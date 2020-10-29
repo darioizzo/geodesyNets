@@ -13,8 +13,8 @@ from ._losses import normalized_loss, mse_loss
 # Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
 from ._integration import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points
 
-# Importing alpha shape methods
-from ._hulls import alpha_shape
+# Importing misc methods for 3D graphics
+from ._hulls import alpha_shape, ray_triangle_intersect, rays_triangle_intersect
 
 # Importing the plots
 from ._plots import plot_mascon, plot_model_grid, plot_model_rejection

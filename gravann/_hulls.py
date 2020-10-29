@@ -54,3 +54,107 @@ def alpha_shape(points, alpha, only_outer=True):
             add_edge(edges, ib, ic)
             add_edge(edges, ic, ia)
     return edges
+
+
+def ray_triangle_intersect(ray_o, ray_d, v0, v1, v2):
+    """Möller–Trumbore intersection algorithm
+
+    Computes whether a ray intersect a triangle
+
+    Args:
+        ray_o (3D np.array): origin of the ray.
+        ray_d (3D np.array): direction of the ray.
+        v0, v1, v2 (3D np.array): triangle vertices
+
+    Returns:
+        boolean value if the intersection exist (includes the edges)
+
+    See: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+    """
+    if ray_o.shape != (3,):
+        raise ValueError("Shape f ray_o input should be (3,)")
+    edge1 = v1-v0
+    edge2 = v2-v0
+    h = np.cross(ray_d, edge2)
+
+    a = np.dot(edge1, h)
+
+    if a < 0.000001 and a > -0.000001:
+        return False
+
+    f = 1.0 / a
+    s = ray_o-v0
+    u = np.dot(s, h) * f
+
+    if u < 0 or u > 1:
+        return False
+
+    q = np.cross(s, edge1)
+    v = np.dot(ray_d, q) * f
+
+    if v < 0 or u + v > 1:
+        return False
+
+    t = f * np.dot(edge2, q)
+
+    return t > 0
+
+
+def rays_triangle_intersect(ray_o, ray_d, v0, v1, v2):
+    """Möller–Trumbore intersection algorithm (vectorized)
+
+    Computes whether a ray intersect a triangle
+
+    Args:
+        ray_o ((N, 3) np.array): origins for the ray.
+        ray_d (3D np.array): direction of the ray.
+        v0, v1, v2 (3D np.array): triangle vertices
+
+    Returns:
+        boolean value if the intersection exist (includes the edges)
+
+    See: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+    """
+    if ray_o.shape[1] != 3:
+        raise ValueError(
+            "Shape f ray_o input should be (N, 3) in this vectorized version")
+    edge1 = v1-v0
+    edge2 = v2-v0
+    h = np.cross(ray_d, edge2)
+
+    a = np.dot(edge1, h)
+
+    if a < 0.000001 and a > -0.000001:
+        return [False]*len(ray_o)
+
+    f = 1.0 / a
+    s = ray_o-v0
+    u = np.dot(s, h) * f
+
+    crit1 = np.logical_not(np.logical_or(u < 0, u > 1))
+    q = np.cross(s, edge1)
+    v = np.dot(q, ray_d) * f
+    crit2 = np.logical_not(np.logical_or(v < 0, u+v > 1))
+    t = f * np.dot(q, edge2)
+    crit3 = t > 0
+
+    return np.logical_and(np.logical_and(crit1, crit2), crit3)
+
+
+def is_inside(points, mesh_vertices, mesh_triangles):
+    """Detects if points are inside a 3D mesh
+
+    Args:
+        points ((N,3)) np.array): points to test.
+        mesh_vertices ((M,3) np.array): vertices pf the mesh
+        mesh_triangles ((M,3) np.array): ids of each triangle
+
+    Returns:
+        boolean value determining whether the points are inside
+    """
+    counter = np.array([0]*len(points))
+    direction = np.array([0, 0, 1])
+    for t in mesh_triangles:
+        counter += rays_triangle_intersect(
+            points, direction, mesh_vertices[t[0]], mesh_vertices[t[1]], mesh_vertices[t[2]])
+    return counter % 2

@@ -327,7 +327,7 @@ def plot_gradients_per_layer(model):
     plt.tight_layout()
     plt.show()
 
-    
+
 def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=100000, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15]):
     """Plots both the mascon and model rejection in one figure for direct comparison
 
@@ -414,4 +414,3 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=10000
         plt.savefig(save_path, dpi=150)
     else:
         plt.show()
-

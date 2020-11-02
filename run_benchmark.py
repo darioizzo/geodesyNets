@@ -55,10 +55,11 @@ LOSSES = [                              # Losses to use
     mse_loss
 ]
 
-ENCODINGS = [                           # Encodings to test (positional currently N/A because it needs one more parameter)
-    # directional_encoding,
-    direct_encoding,
-    # spherical_coordinates
+ENCODINGS = [                           # Encodings to test
+    directional_encoding(),
+    direct_encoding(),
+    positional_encoding(3),
+    # spherical_coordinates()
 ]
 USE_ACC = True                         # Use acceleration instead of U
 if USE_ACC:
@@ -114,7 +115,7 @@ def run():
                                 print(
                                     f"\n ---------- RUNNING CONFIG {run_counter} / {TOTAL_RUNS} -------------")
                                 print(
-                                    f"|LR={lr}\t\t\tloss={loss.__name__}\t\tencoding={encoding.__name__}|")
+                                    f"|LR={lr}\t\t\tloss={loss.__name__}\t\tencoding={encoding.name}|")
                                 print(
                                     f"|target_sample={target_sample_method}\tactivation={str(activation)[:-2]}\t\tbatch_size={batch_size}|")
                                 print(
@@ -156,7 +157,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     # Create folder for this specific run
     run_folder = OUTPUT_FOLDER + \
         sample.replace("/", "_") + \
-        f"/LR={lr}_loss={loss_fn.__name__}_encoding={encoding.__name__}_" + \
+        f"/LR={lr}_loss={loss_fn.__name__}_encoding={encoding.name}_" + \
         f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
@@ -196,7 +197,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
             labels = U_L(target_points, mascon_points, mascon_masses)
 
         # Train
-        loss, c = train_on_batch(target_points, labels, model, encoding(),
+        loss, c = train_on_batch(target_points, labels, model, encoding,
                                  loss_fn, optimizer, scheduler, INTEGRATOR, N_INTEGR_POINTS)
 
         # Update the loss trend indicators
@@ -213,7 +214,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
         if (it % 100 == 0):
             # Save a plot
-            plot_model_rejection(model, encoding(), views_2d=True,
+            plot_model_rejection(model, encoding, views_2d=True,
                                  bw=True, N=50000, alpha=0.1, s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c)
             # And change the batch
             # Sample target points
@@ -227,13 +228,13 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     _save_results(loss_log, weighted_average_log, model, run_folder)
 
     if SAVE_PLOTS:
-        _save_plots(model, encoding(), mascon_points, mesh, loss_log,
+        _save_plots(model, encoding, mascon_points, mesh, loss_log,
                     weighted_average_log, n_inferences, run_folder, c)
 
     # store in results dataframe
     global RESULTS
     RESULTS = RESULTS.append(
-        {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Loss": loss_fn.__name__, "Encoding": encoding.__name__,
+        {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Loss": loss_fn.__name__, "Encoding": encoding.name,
          "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
          "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS,
          "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1]},

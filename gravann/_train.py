@@ -17,7 +17,7 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid()):
     """ Network architecture. Note that the dimensionality of the first linear layer must match the output of the encoding chosen
 
     Args:
-        encoding (func): encoding function to use for the network
+        encoding (encoding): encoding instance to use for the network
         n_neurons (int, optional): Number of neurons per layer. Defaults to 100.
         activation (torch activation function, optional): Activation function for the last network layer. Defaults to nn.Sigmoid().
 
@@ -26,7 +26,7 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid()):
     """
     #
     model = nn.Sequential(
-        nn.Linear(encoding().dim, n_neurons),
+        nn.Linear(encoding.dim, n_neurons),
         nn.ReLU(),
         nn.Linear(n_neurons, n_neurons),
         nn.ReLU(),

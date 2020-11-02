@@ -12,36 +12,42 @@ import pandas as pd
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
 from gravann import normalized_loss, mse_loss
-from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points
-from gravann import U_L
+from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points, ACC_trap
+from gravann import U_L, ACC_L
+from gravann import is_outside
 from gravann import enableCUDA, max_min_distance, fixRandomSeeds
 from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
-from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection
+from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection
 
-EXPERIMENT_ID = "run_27_10_2020"
+EXPERIMENT_ID = "run_02_11_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "8"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 3000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    # "mascons/Eros.pk",
-    # "mascons/Churyumov-Gerasimenko.pk",
-    # "mascons/Itokawa.pk",
-    # "mascons/sample_01_cluster_2400.pk",
-    # "mascons/sample_04_cluster_6674_hollow_0.3_0.3.pk",
-    "mascons/sample_08_cluster_1970.pk"
+    "Eros.pk",
+    # "Churyumov-Gerasimenko.pk",
+    # "Itokawa.pk",
+    # "sample_01_cluster_2400.pk",
+    # "sample_02_cluster_5486.pk",
+    # "sample_03_cluster_2284.pk",
+    # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    # "sample_06_cluster_6137.pk",
+    # "sample_07_cluster_2441.pk",
+    # "sample_08_cluster_1970.pk",
+    # "sample_09_cluster_1896.pk"
 ]
 
-N_INTEGR_POINTS = 800000                # Number of integrations points for U
-TARGET_SAMPLER = [  # "spherical",          # How to sample target points
+N_INTEGR_POINTS = 400000                # Number of integrations points for U
+TARGET_SAMPLER = [  # "spherical",      # How to sample target points
     "cubical",
 ]
-SAMPLE_DOMAIN = [1.0,                   # Defines the distance of target points
-                 1.1]
+SAMPLE_DOMAIN = [0.0,                   # Defines the distance of target points
+                 1]
 BATCH_SIZES = [1000]                     # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
@@ -50,12 +56,16 @@ LOSSES = [                              # Losses to use
 ]
 
 ENCODINGS = [                           # Encodings to test (positional currently N/A because it needs one more parameter)
-    directional_encoding,
+    # directional_encoding,
     direct_encoding,
     # spherical_coordinates
 ]
-USE_ACC = False                         # Use acceleration instead of U (TODO)
-INTEGRATOR = U_trap_opt
+USE_ACC = True                         # Use acceleration instead of U
+if USE_ACC:
+    INTEGRATOR = ACC_trap
+else:
+    INTEGRATOR = U_trap_opt
+
 ACTIVATION = [                          # Activation function on the last layer
     torch.nn.Sigmoid(),
     # torch.nn.Softplus(),
@@ -93,12 +103,6 @@ def run():
         print(f"\n--------------- STARTING {sample} ----------------")
         points, masses = _load_sample(sample)
 
-        # if SAVE_PLOTS:
-        #print(f"Creating mesh for plots...", end="")
-        # mesh = create_mesh_from_cloud(points.cpu().numpy(
-        # ), use_top_k=5, distance_threshold=0.125, plot_each_it=-1, subdivisions=6)
-        # print("Done.")
-        # else:
         mesh = None
         for lr in LRs:
             for loss in LOSSES:
@@ -128,7 +132,7 @@ def run():
     print("###############################################")
 
 
-def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses, target_sample_method, activation, mesh):
+def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points, mascon_masses, target_sample_method, activation, mesh):
     """Runs a specific parameter configur
 
     Args:
@@ -137,8 +141,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         encoding (func): Encoding function to call
         batch_size (int): Number of target points per batch
         sample (str): Name of the sample to run
-        points (torch tensor): Points of the mascon model
-        masses (torch tensor): Masses of the mascon model
+        mascon_points (torch tensor): Points of the mascon model
+        mascon_masses (torch tensor): Masses of the mascon model
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
         mesh (pyvista mesh): Mesh of the sample
@@ -162,10 +166,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
     # When a new network is created we init empty training logs and we init some loss trend indicators
     loss_log = []
     weighted_average_log = []
-    running_loss_log = []
     n_inferences = []
     weighted_average = deque([], maxlen=20)
-    running_loss = 1.
 
     # Here we set the method to sample the target points
     targets_point_sampler = get_target_point_sampler(
@@ -176,21 +178,31 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=0.5, patience=1000, min_lr=5e-6, verbose=False)
 
+    # Sample target points
+    target_points = targets_point_sampler()
+    # ... and remove those inside
+    with open("3dmeshes/" + sample, "rb") as file:
+        mesh_vertices, mesh_triangles = pk.load(file)
+    mesh_vertices = np.array(mesh_vertices)
+    target_points = target_points[is_outside(
+        target_points.cpu(), mesh_vertices, mesh_triangles)]
+    batch_size = len(target_points)
+
     t = tqdm(range(ITERATIONS), ncols=150)
     for it in t:
-        # Sample target points
-        targets = targets_point_sampler()
-        labels = U_L(targets, points, masses)
+        if USE_ACC:
+            labels = ACC_L(target_points, mascon_points, mascon_masses)
+        else:
+            labels = U_L(target_points, mascon_points, mascon_masses)
+
         # Train
-        loss, c = train_on_batch(targets, labels, model, encoding(),
+        loss, c = train_on_batch(target_points, labels, model, encoding(),
                                  loss_fn, optimizer, scheduler, INTEGRATOR, N_INTEGR_POINTS)
 
         # Update the loss trend indicators
-        running_loss = 0.9 * running_loss + 0.1 * loss.item()
         weighted_average.append(loss.item())
 
         # Update the logs
-        running_loss_log.append(running_loss)
         weighted_average_log.append(np.mean(weighted_average))
         loss_log.append(loss.item())
         n_inferences.append((N_INTEGR_POINTS*batch_size) // 1000)
@@ -199,12 +211,24 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         t.set_postfix_str(
             f"Loss={loss.item():.3e} | WeightedAvg={wa_out:.3e}\t | c={c:.3e}")
 
-    _save_results(loss_log, running_loss_log,
-                  weighted_average_log, model, run_folder)
+        if (it % 100 == 0):
+            # Save a plot
+            plot_model_rejection(model, encoding(), views_2d=True,
+                                 bw=True, N=50000, alpha=0.1, s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c)
+            # And change the batch
+            # Sample target points
+            target_points = targets_point_sampler()
+            # ... and remove those inside
+            target_points = target_points[is_outside(
+                target_points.cpu(), mesh_vertices, mesh_triangles)]
+            batch_size = len(target_points)
+            plt.close('all')
+
+    _save_results(loss_log, weighted_average_log, model, run_folder)
 
     if SAVE_PLOTS:
-        _save_plots(model, encoding(), mesh, loss_log,
-                    running_loss_log, weighted_average_log, n_inferences, run_folder, c)
+        _save_plots(model, encoding(), mascon_points, mesh, loss_log,
+                    weighted_average_log, n_inferences, run_folder, c)
 
     # store in results dataframe
     global RESULTS
@@ -212,7 +236,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, points, masses
         {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Loss": loss_fn.__name__, "Encoding": encoding.__name__,
          "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
          "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS,
-         "Final Loss": loss_log[-1], "Final Running Loss": running_loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1]},
+         "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1]},
         ignore_index=True
     )
 
@@ -239,7 +263,7 @@ def _load_sample(sample):
     Returns:
         torch tensors: points and masses of the sample
     """
-    with open(sample, "rb") as file:
+    with open("mascons/" + sample, "rb") as file:
         points, masses, name = pk.load(file)
 
     points = torch.tensor(points)
@@ -252,33 +276,31 @@ def _load_sample(sample):
     return points, masses
 
 
-def _save_results(loss_log, running_loss_log, weighted_average_log, model, folder):
+def _save_results(loss_log, weighted_average_log, model, folder):
     """Stores the results of a run
 
     Args:
         loss_log (list): list of losses recorded
-        running_loss_log (list): list of running losses recorded
         weighted_average_log (list): list of weighted average losses recorded
         model (torch model): Torch model that was trained
         folder (str): results folder of the run
     """
     print(f"Saving run results to {folder} ...", end="")
     np.save(folder+"loss_log.npy", loss_log)
-    np.save(folder+"running_loss_log.npy", loss_log)
     np.save(folder+"weighted_average_log.npy", loss_log)
     torch.save(model.state_dict(), folder + "model.mdl")
     print("Done.")
 
 
-def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_average_log, n_inferences, folder, c):
+def _save_plots(model, encoding, mascon_points, gt_mesh, loss_log, weighted_average_log, n_inferences, folder, c):
     """Creates plots using the model and stores them
 
     Args:
         model (torch nn): trained model
         encoding (func): encoding function
+        mascon_points (torch tensor): Points of the mascon model
         gt_mesh ([type]): ground truth mesh of the sample
         loss_log (list): list of losses recorded
-        running_loss_log (list): list of running losses recorded
         weighted_average_log (list): list of weighted average losses recorded
         n_inferences (list): list of number of model evaluations
         folder (str): results folder of the run
@@ -290,18 +312,21 @@ def _save_plots(model, encoding, gt_mesh, loss_log, running_loss_log, weighted_a
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,
-                         bw=True, N=100000, crop_p=0.2, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c=c)
+                         bw=True, N=50000, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c=c)
+    print("Done.")
+    print("Creating model_vs_mascon_rejection plot...", end="")
+    plot_model_vs_mascon_rejection(
+        model, encoding, mascon_points, save_path=folder + "model_vs_mascon_rejection.png", c=c)
     print("Done.")
 
     print("Creating loss plots...", end="")
     plt.figure()
     abscissa = np.cumsum(n_inferences)
     plt.semilogy(abscissa, loss_log)
-    plt.semilogy(abscissa, running_loss_log)
     plt.semilogy(abscissa, weighted_average_log)
     plt.xlabel("Thousands of model evaluations")
     plt.ylabel("Loss")
-    plt.legend(["Loss", "Running Loss", "Weighted Average Loss"])
+    plt.legend(["Loss", "Weighted Average Loss"])
     plt.savefig(folder+"loss_plot.png", dpi=150)
     print("Done.")
 

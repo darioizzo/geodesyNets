@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
-from gravann import normalized_loss, mse_loss
+from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss
 from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points, ACC_trap
 from gravann import U_L, ACC_L
 from gravann import is_outside
@@ -20,19 +20,18 @@ from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection
 
-EXPERIMENT_ID = "run_02_11_2020"
+EXPERIMENT_ID = "run_03_11_2020"
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
-OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 3000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    "Eros.pk",
+    # "Eros.pk",
     # "Churyumov-Gerasimenko.pk",
     # "Itokawa.pk",
-    # "sample_01_cluster_2400.pk",
+    "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
     # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
@@ -43,29 +42,41 @@ SAMPLES = [                                         # Use some specific samples
 ]
 
 N_INTEGR_POINTS = 400000                # Number of integrations points for U
-TARGET_SAMPLER = [  # "spherical",      # How to sample target points
-    "cubical",
-]
+TARGET_SAMPLER = ["spherical",          # How to sample target points
+                  "cubical",
+                  ]
 SAMPLE_DOMAIN = [0.0,                   # Defines the distance of target points
                  1]
-BATCH_SIZES = [1000]                     # For training
+BATCH_SIZES = [1000]                    # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
     normalized_loss,
-    mse_loss
+    normalized_L1_loss,
+    contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
-    directional_encoding(),
+    # directional_encoding(),
     direct_encoding(),
-    positional_encoding(3),
+    # positional_encoding(3),
     # spherical_coordinates()
 ]
 USE_ACC = True                         # Use acceleration instead of U
 if USE_ACC:
     INTEGRATOR = ACC_trap
+    EXPERIMENT_ID = EXPERIMENT_ID + "ACC"
 else:
     INTEGRATOR = U_trap_opt
+    EXPERIMENT_ID = EXPERIMENT_ID + "U"
+
+
+USE_SIRENS = True
+if USE_SIRENS:
+    EXPERIMENT_ID = EXPERIMENT_ID + "SIRENS"
+
+# We can now name the output folder
+OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
+
 
 ACTIVATION = [                          # Activation function on the last layer
     torch.nn.Sigmoid(),
@@ -74,7 +85,7 @@ ACTIVATION = [                          # Activation function on the last layer
     # torch.nn.LeakyReLU(),
 ]
 SAVE_PLOTS = True                       # If plots should be saved.
-PLOTTING_POINTS = 10                    # Points per rejection plot
+PLOTTING_POINTS = 2500                  # Points per rejection plot
 
 RESULTS = pd.DataFrame(columns=["Sample", "Type", "Loss", "Encoding", "Integrator", "Activation",
                                 "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss", "Final WeightedAvg Loss"])
@@ -166,7 +177,12 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
     # Init model
-    model = init_network(encoding, n_neurons=100, activation=activation)
+    if USE_SIRENS:
+        model = init_network(encoding, n_neurons=100,
+                             activation=activation, model_type="siren")
+    else:
+        model = init_network(encoding, n_neurons=100,
+                             activation=activation, model_type="default")
 
     # When a new network is created we init empty training logs and we init some loss trend indicators
     loss_log = []
@@ -176,7 +192,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
     # Here we set the method to sample the target points
     targets_point_sampler = get_target_point_sampler(
-        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN)
+        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN, limit_shape_to_asteroid="3dmeshes/" + sample)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -185,16 +201,13 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
     # Sample target points
     target_points = targets_point_sampler()
-    # ... and remove those inside
-    with open("3dmeshes/" + sample, "rb") as file:
-        mesh_vertices, mesh_triangles = pk.load(file)
-    mesh_vertices = np.array(mesh_vertices)
-    target_points = target_points[is_outside(
-        target_points.cpu(), mesh_vertices, mesh_triangles)]
-    batch_size = len(target_points)
 
     t = tqdm(range(ITERATIONS), ncols=150)
     for it in t:
+        # Each ten epochs we resample the target points
+        if (it % 10 == 0):
+            target_points = targets_point_sampler()
+        # We generate the labels
         if USE_ACC:
             labels = ACC_L(target_points, mascon_points, mascon_masses)
         else:
@@ -215,18 +228,11 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
         t.set_postfix_str(
             f"Loss={loss.item():.3e} | WeightedAvg={wa_out:.3e}\t | c={c:.3e}")
-
+        # Each hundred epochs we produce the plots
         if (it % 100 == 0):
             # Save a plot
-            plot_model_rejection(model, encoding(), views_2d=True,
-                                 bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c)
-            # And change the batch
-            # Sample target points
-            target_points = targets_point_sampler()
-            # ... and remove those inside
-            target_points = target_points[is_outside(
-                target_points.cpu(), mesh_vertices, mesh_triangles)]
-            batch_size = len(target_points)
+            plot_model_rejection(model, encoding, views_2d=True, bw=True, N=PLOTTING_POINTS, alpha=0.1,
+                                 s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c, progressbar=False)
             plt.close('all')
 
     _save_results(loss_log, weighted_average_log, model, run_folder)

@@ -273,7 +273,8 @@ def _compute_model_output(model, encoding, sample_points):
         torch tensor: computed values
     """
     # check dimensions match
-    _check_model_encoding_compatibility(model, encoding)
+    # temporarily disabled as incompatible with non-subscriptable models
+    #_check_model_encoding_compatibility(model, encoding)
 
     # 1 - compute the inputs to the ANN encoding the sampled points
     nn_inputs = encoding(sample_points)

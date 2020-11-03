@@ -73,10 +73,10 @@ ACTIVATION = [                          # Activation function on the last layer
     # torch.nn.LeakyReLU(),
 ]
 SAVE_PLOTS = True                       # If plots should be saved.
+PLOTTING_POINTS = 10                    # Points per rejection plot
 
 RESULTS = pd.DataFrame(columns=["Sample", "Type", "Loss", "Encoding", "Integrator", "Activation",
-                                "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss",
-                                "Final Running Loss", "Final WeightedAvg Loss"])
+                                "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss", "Final WeightedAvg Loss"])
 
 
 TOTAL_RUNS = len(ACTIVATION) * len(ENCODINGS) * len(LOSSES) * \
@@ -126,7 +126,11 @@ def run():
         print("###############################################")
 
     print(f"Writing results csv to {OUTPUT_FOLDER}. \n")
-    RESULTS.to_csv(OUTPUT_FOLDER + "/" + "results.csv")
+    global RESULTS
+    if os.path.isfile(OUTPUT_FOLDER + "/" + "results.csv"):
+        previous_results = pd.read_csv(OUTPUT_FOLDER + "/" + "results.csv")
+        RESULTS = pd.concat([previous_results, RESULTS])
+    RESULTS.to_csv(OUTPUT_FOLDER + "/" + "results.csv", index=False)
     print("###############################################")
     print("#############   TUTTO FATTO :)    #############")
     print("###############################################")
@@ -214,7 +218,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
         if (it % 100 == 0):
             # Save a plot
             plot_model_rejection(model, encoding(), views_2d=True,
-                                 bw=True, N=50000, alpha=0.1, s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c)
+                                 bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c)
             # And change the batch
             # Sample target points
             target_points = targets_point_sampler()
@@ -312,11 +316,11 @@ def _save_plots(model, encoding, mascon_points, gt_mesh, loss_log, weighted_aver
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,
-                         bw=True, N=50000, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c=c)
+                         bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c=c)
     print("Done.")
     print("Creating model_vs_mascon_rejection plot...", end="")
     plot_model_vs_mascon_rejection(
-        model, encoding, mascon_points, save_path=folder + "model_vs_mascon_rejection.png", c=c)
+        model, encoding, mascon_points, N=PLOTTING_POINTS, save_path=folder + "model_vs_mascon_rejection.png", c=c)
     print("Done.")
 
     print("Creating loss plots...", end="")

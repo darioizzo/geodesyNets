@@ -41,7 +41,7 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
             N, method, bounds, limit_shape_to_asteroid)
 
 
-def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, sample_step_size=1):
+def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, sample_step_size=32):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 

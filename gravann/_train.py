@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+from ._losses import contrastive_loss
 
 
 def _weights_init(m):
@@ -74,7 +75,10 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     # Compute the loss (use N=3000 to start with, then, eventually, beef it up to 200000)
     predicted = integrator(targets, model, encoding, N=N)
     c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
-    loss = loss_fn(predicted.view(-1), labels.view(-1))
+    if loss_fn == contrastive_loss:
+        loss = loss_fn(predicted, labels)
+    else:
+        loss = loss_fn(predicted.view(-1), labels.view(-1))
 
     # Before the backward pass, use the optimizer object to zero all of the
     # gradients for the variables it will update (which are the learnable

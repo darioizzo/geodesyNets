@@ -42,9 +42,9 @@ SAMPLES = [                                         # Use some specific samples
 ]
 
 N_INTEGR_POINTS = 400000                # Number of integrations points for U
-TARGET_SAMPLER = ["spherical",          # How to sample target points
-                  "cubical",
-                  ]
+TARGET_SAMPLER = [  # "spherical",          # How to sample target points
+    "cubical",
+]
 SAMPLE_DOMAIN = [0.0,                   # Defines the distance of target points
                  1]
 BATCH_SIZES = [1000]                    # For training

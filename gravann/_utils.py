@@ -4,6 +4,34 @@ import os
 import warnings
 
 
+def unpack_triangle_mesh(mesh_vertices, mesh_triangles):
+    """Unpacks the encoded triangles from vertices and faces
+
+    Args:
+        mesh_vertices (np.array): Nx3 vertices
+        mesh_triangles (np.array): Vx3 indices of respectively three vertices
+
+    Returns:
+        tuple of torch.tensor: (first_vertices,second_vertices,third_vertices)
+    """
+    mesh_vertices = torch.tensor(mesh_vertices).float()
+    mesh_triangles = torch.tensor(mesh_triangles)
+
+    # Unpack vertices
+    v0 = torch.zeros([len(mesh_triangles), 3],
+                     device=os.environ["TORCH_DEVICE"])
+    v1 = torch.zeros([len(mesh_triangles), 3],
+                     device=os.environ["TORCH_DEVICE"])
+    v2 = torch.zeros([len(mesh_triangles), 3],
+                     device=os.environ["TORCH_DEVICE"])
+    for idx, t in enumerate(mesh_triangles):
+        v0[idx] = mesh_vertices[t[0]]
+        v1[idx] = mesh_vertices[t[1]]
+        v2[idx] = mesh_vertices[t[2]]
+
+    return (v0, v1, v2)
+
+
 def enableCUDA(device=0):
     """This function will set the default device to CUDA if possible. Call before declaring any variables!
     """

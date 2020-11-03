@@ -6,6 +6,7 @@ import math
 import numpy as np
 import pyvista as pv
 import pyvistaqt as pvqt
+from tqdm import tqdm
 pv.set_plot_theme("night")
 
 
@@ -41,7 +42,7 @@ def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
 
 
 def plot_points(points):
-    """Creates a 3D scatter plot of passed points.     
+    """Creates a 3D scatter plot of passed points.
 
     Args:
         points (torch tensor): Points to plot.
@@ -58,7 +59,7 @@ def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
     """Plots the mesh generated from a model that predicts rho. Returns the mesh
 
     Args:
-        model (Torch Model): Model to use 
+        model (Torch Model): Model to use
         encoding (Encoding function): The function used to encode points for the model
         interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
@@ -73,7 +74,7 @@ def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interact
 
     Args:
         cloud (torch tensor): The points that should be used to generate the mesh (3,N)
-        distance_threshold (float): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into. 
+        distance_threshold (float): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into.
         use_top_k (int): the number of nearest neighbours to be used for distance.
         interactive (bool): Creates a separate window which you can use interactively.
     """
@@ -89,7 +90,7 @@ def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, ele
 
     Args:
         mesh (pyvista mesh): mesh to plot
-        show_edges (bool,): Show grid wires. 
+        show_edges (bool,): Show grid wires.
         smooth_shading (bool): Use smooth_shading.
         interactive (bool): Creates a separate window which you can use interactively.
     """
@@ -162,7 +163,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
     the density value on a grid.
 
     Args:
-        model (callable (a,b)->1): neural model for the asteroid. 
+        model (callable (a,b)->1): neural model for the asteroid.
         encoding: the encoding for the neural inputs.
         N (int): grid size (N**3 points will be plotted).
         bw (bool): when True considers zero density as white and transparent. The final effect is a black and white plot
@@ -230,7 +231,7 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
     as a probability distribution and performing a rejection sampling approach
 
     Args:
-        model (callable (N,M)->1): neural model for the asteroid. 
+        model (callable (N,M)->1): neural model for the asteroid.
         encoding: the encoding for the neural inputs.
         N (int): number of points to be considered.
         views_2d (bool): activates also the 2d projections
@@ -242,17 +243,31 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
         c (float, optional): Normalization constant. Defaults to 1.
 
     """
-    points = torch.rand(N, 3) * 2 - 1
-    nn_inputs = encoding(points)
-    RHO = model(nn_inputs).detach() * c
-    mask = RHO > (torch.rand(N, 1) + crop_p)
-    RHO = RHO[mask]
-    points = [[it[0].item(), it[1].item(), it[2].item()]
-              for it, m in zip(points, mask) if m]
-    if len(points) == 0:
-        print("All points rejected! Plot is empty, try cropping less?")
-        return
-    points = torch.tensor(points)
+    torch.manual_seed(42)  # Seed torch to always get the same points
+    points = []
+    rho = []
+    batch_size = 4096
+    found = 0
+    pbar = tqdm(desc="Sampling points...", total=N)
+    while found < N:
+        candidates = torch.rand(batch_size, 3) * 2 - 1
+        nn_inputs = encoding(candidates)
+        rho_candidates = model(nn_inputs).detach() * c
+        mask = rho_candidates > (torch.rand(batch_size, 1) + crop_p)
+        rho_candidates = rho_candidates[mask]
+        candidates = [[it[0].item(), it[1].item(), it[2].item()]
+                      for it, m in zip(candidates, mask) if m]
+        if len(candidates) == 0:
+            print("All points rejected! Plot is empty, try cropping less?")
+            return
+        points.append(torch.tensor(candidates))
+        rho.append(rho_candidates)
+        found += len(rho)
+        pbar.update(len(rho))
+    pbar.close()
+    points = torch.cat(points, dim=0)[:N]  # concat and discard after N
+    rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
+
     fig = plt.figure()
     if views_2d:
         ax = fig.add_subplot(221, projection='3d')
@@ -261,7 +276,7 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
     if bw:
         col = 'k'
     else:
-        col = RHO.cpu()
+        col = rho.cpu()
     # And we plot it
     ax.scatter(points[:, 0].cpu(), points[:, 1].cpu(), points[:, 2].cpu(),
                marker='.', c=col, s=s, alpha=alpha)
@@ -328,7 +343,7 @@ def plot_gradients_per_layer(model):
     plt.show()
 
 
-def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=100000, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15]):
+def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=10000, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15]):
     """Plots both the mascon and model rejection in one figure for direct comparison
 
     Args:
@@ -359,18 +374,30 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=10000
         normalized_masses = masses / sum(masses)
         normalized_masses = (normalized_masses * s * len(x)).cpu()
 
-    # Model samples
-    points = torch.rand(N, 3) * 2 - 1
-    nn_inputs = encoding(points)
-    RHO = model(nn_inputs).detach() * c
-    mask = RHO > (torch.rand(N, 1) + crop_p)
-    RHO = RHO[mask]
-    points = [[it[0].item(), it[1].item(), it[2].item()]
-              for it, m in zip(points, mask) if m]
-    if len(points) == 0:
-        print("All points rejected! Plot is empty, try cropping less?")
-        return
-    points = torch.tensor(points)
+    torch.manual_seed(42)  # Seed torch to always get the same points
+    points = []
+    rho = []
+    batch_size = 4096
+    found = 0
+    pbar = tqdm(desc="Sampling points...", total=N)
+    while found < N:
+        candidates = torch.rand(batch_size, 3) * 2 - 1
+        nn_inputs = encoding(candidates)
+        rho_candidates = model(nn_inputs).detach() * c
+        mask = rho_candidates > (torch.rand(batch_size, 1) + crop_p)
+        rho_candidates = rho_candidates[mask]
+        candidates = [[it[0].item(), it[1].item(), it[2].item()]
+                      for it, m in zip(candidates, mask) if m]
+        if len(candidates) == 0:
+            print("All points rejected! Plot is empty, try cropping less?")
+            return
+        points.append(torch.tensor(candidates))
+        rho.append(rho_candidates)
+        found += len(rho)
+        pbar.update(len(rho))
+    pbar.close()
+    points = torch.cat(points, dim=0)[:N]  # concat and discard after N
+    rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
     fig = plt.figure(dpi=150, facecolor=backcolor)
     ax = fig.add_subplot(221, projection='3d')

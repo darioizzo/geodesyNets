@@ -1,5 +1,7 @@
 from scipy.spatial import Delaunay
 import numpy as np
+import torch
+import os
 from copy import deepcopy
 
 
@@ -140,6 +142,72 @@ def rays_triangle_intersect(ray_o, ray_d, v0, v1, v2):
     crit3 = t > 0
 
     return np.logical_and(np.logical_and(crit1, crit2), crit3)
+
+
+def rays_triangle_intersect_torch(ray_o, ray_d, v0, v1, v2):
+    """Möller–Trumbore intersection algorithm (vectorized)
+
+    Computes whether a ray intersect a triangle
+
+    Args:
+        ray_o ((3) torch.tensor): origins for the ray.
+        ray_d (3D torch.tensor): direction of the ray.
+        v0, v1, v2 (Nx3 torch.tensor): triangle vertices
+
+    Returns:
+        boolean value if the intersection exist (includes the edges)
+
+    See: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+    """
+    V = len(v0)
+
+    edge1 = v1-v0
+    edge2 = v2-v0
+    ray_o = ray_o.repeat(V, 1)
+    h = torch.cross(ray_d.expand(V, 3), edge2)
+
+    a = torch.einsum('bs,bs->b', edge1, h)
+
+    f = 1.0 / a
+    s = ray_o - v0
+    u = torch.einsum('bs,bs->b', s, h) * f
+
+    crit1 = torch.logical_not(torch.logical_or(u < 0.0, u > 1.0))
+    q = torch.cross(s, edge1)
+
+    v = torch.einsum('bs,bs->b', q,
+                     ray_d.expand(V, 3)) * f
+    crit2 = torch.logical_not(torch.logical_or(v < 0.0, u+v > 1.0))
+    t = f * torch.einsum('bs,bs->b', q,
+                         edge2)
+
+    crit3 = t > 0.0
+    result = torch.logical_and(torch.logical_and(crit1, crit2), crit3)
+
+    # Set those 0 where a < 0.000001 or a > -0.000001
+    result[torch.logical_and(a < 0.0000001, a > -0.0000001)] = 0
+    return torch.sum(result)
+
+
+def is_outside_torch(points, triangles):
+    """Detects if points are outside a 3D mesh
+
+    Args:
+        points ((N,3)) torch.tensor): points to test.
+        mesh_vertices ((3,M,3) torch.tensor): vertices pf the mesh
+        mesh_triangles ((M,3) torch.tensor): ids of each triangle
+
+    Returns:
+        torch.tensor of boolean values determining whether the points are inside
+    """
+    counter = torch.zeros([len(points)], device=os.environ["TORCH_DEVICE"])
+    direction = torch.tensor([0., 0., 1.], device=os.environ["TORCH_DEVICE"])
+    v0, v1, v2 = triangles
+    for idx, point in enumerate(points):
+        counter[idx] = rays_triangle_intersect_torch(
+            point, direction, v0, v1, v2)
+
+    return (counter % 2) == 0
 
 
 def is_outside(points, mesh_vertices, mesh_triangles):

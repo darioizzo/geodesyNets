@@ -1,5 +1,8 @@
 from torch import nn
 import torch
+from ._losses import contrastive_loss
+
+from .external._siren import Siren
 
 
 def _weights_init(m):
@@ -13,45 +16,50 @@ def _weights_init(m):
         nn.init.uniform_(m.bias.data, -0.0, 0.0)
 
 
-def init_network(encoding, n_neurons=100, activation=nn.Sigmoid()):
+def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="default"):
     """ Network architecture. Note that the dimensionality of the first linear layer must match the output of the encoding chosen
 
     Args:
         encoding (encoding): encoding instance to use for the network
         n_neurons (int, optional): Number of neurons per layer. Defaults to 100.
         activation (torch activation function, optional): Activation function for the last network layer. Defaults to nn.Sigmoid().
+        model_type (str,optional): Defines what model to use. Available "siren" "default". Defaults to "default".
 
     Returns:
         torch model: Initialized model
     """
-    #
-    model = nn.Sequential(
-        nn.Linear(encoding.dim, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, n_neurons),
-        nn.ReLU(),
-        nn.Linear(n_neurons, 1),
-        activation,
-    )
+    if model_type == "default":
+        model = nn.Sequential(
+            nn.Linear(encoding.dim, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, 1),
+            activation,
+        )
 
-    # Applying our weight initialization
-    _ = model.apply(_weights_init)
+        # Applying our weight initialization
+        _ = model.apply(_weights_init)
 
-    return model
+        return model
+
+    elif model_type == "siren":
+        return Siren(in_features=encoding.dim, out_features=1, hidden_features=100,
+                     hidden_layers=9, outermost_linear=True)
 
 
 def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, scheduler, integrator, N):
@@ -74,7 +82,10 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     # Compute the loss (use N=3000 to start with, then, eventually, beef it up to 200000)
     predicted = integrator(targets, model, encoding, N=N)
     c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
-    loss = loss_fn(predicted.view(-1), labels.view(-1))
+    if loss_fn == contrastive_loss:
+        loss = loss_fn(predicted, labels)
+    else:
+        loss = loss_fn(predicted.view(-1), labels.view(-1))
 
     # Before the backward pass, use the optimizer object to zero all of the
     # gradients for the variables it will update (which are the learnable

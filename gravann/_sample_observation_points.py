@@ -2,12 +2,16 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pickle as pk
+
+from ._utils import unpack_triangle_mesh
+from ._hulls import is_outside_torch
 
 # There is no torch.pi so we define it here
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 
 
-def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2]):
+def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 
@@ -15,24 +19,101 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2]):
         N (int): Number of points to get each call
         radius_bounds (list): Defaults to [1.1, 1.2]. Specifies the sampling radius.
         method (str, optional): Utilized method. Currently supports random points from some volume
-                                (cubical, spherical) or a spherical grid (will not change each 
+                                (cubical, spherical) or a spherical grid (will not change each
                                 call). Defaults to "cubical".
+        limit_shape_to_asteroid(str, optional): Path to a *.pk file specifies an asteroid shape to exclude from samples
 
     Returns:
         lambda: function to call to get sampled target points
     """
+    if limit_shape_to_asteroid == None:
+        # Create point sampler function
+        if method == "cubical":
+            return lambda: _sample_cubical(N, bounds)
+        elif method == "spherical":
+            return lambda: _sample_spherical(N, bounds)
+        elif method == "spherical_grid":
+            points = _get_spherical_grid(N)
+            return points
+    # Create domain limiter if passed
+    else:
+        return _get_asteroid_limited_sampler(
+            N, method, bounds, limit_shape_to_asteroid)
+
+
+def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, sample_step_size=32):
+    """Get a function to sample N target points from. Points may differ each
+    call depending on selected method. See specific implementations for details.
+
+    Args:
+        N (int): Number of points to get each call
+        radius_bounds (list): Defaults to [1.1, 1.2]. Specifies the sampling radius.
+        method (str, optional): Utilized method. Currently supports random points from some volume
+                                (cubical, spherical) or a spherical grid (will not change each
+                                call). Defaults to "cubical".
+        limit_shape_to_asteroid(str, optional): Path to a *.pk file specifies an asteroid shape to exclude from samples
+        sample_step_size (int, optional): How many samples are drawn each try to add until N reached
+
+    Returns:
+        lambda: function to call to get sampled target points
+    """
+    if method == "spherical_grid":
+        raise NotImplementedError(
+            "Sorry. Spherical grid is not supported with asteroid shape as the grid is the same on each call.")
+
+    # Load asteroid triangles
+    with open(limit_shape_to_asteroid, "rb") as file:
+        mesh_vertices, mesh_triangles = pk.load(file)
+        triangles = unpack_triangle_mesh(mesh_vertices, mesh_triangles)
+
+    # Create a sampler to get some points
     if method == "cubical":
-        return lambda: _sample_cubical(N, bounds)
+        def sampler(): return _sample_cubical(sample_step_size, bounds)
     elif method == "spherical":
-        return lambda: _sample_spherical(N, bounds)
-    elif method == "spherical_grid":
-        points = _get_spherical_grid(N)
-        return lambda: points
+        def sampler(): return _sample_spherical(sample_step_size, bounds)
+
+    # Create a new sampler inside the sampler so to speak
+    return lambda: _get_N_points_outside_asteroid(N, sampler, triangles, sample_step_size)
+
+
+def _get_N_points_outside_asteroid(N, sampler, triangles, sample_step_size):
+    """Sample points until N outside asteroid reached with given sampler and triangles
+
+    Args:
+        N (int): target # of points
+        sampler (func): sampler to call
+        triangles (torch tensor): triangles of the asteroid as (v0,v1,v2)
+        sample_step_size (int): how many points the sampler will spit out each call
+
+    Returns:
+        torch tensor: sampled points
+    """
+    # We allocate a few more just to avoid having to check, will discard in return
+    points = torch.zeros([N+sample_step_size, 3],
+                         device=os.environ["TORCH_DEVICE"])
+    found_points = 0
+
+    # Sample points till we sufficient amount
+    while found_points < N:
+
+        # Get some points
+        candidates = sampler()
+        candidates_outside = candidates[is_outside_torch(
+            candidates, triangles)]
+
+        # Add those that were outside to our collection
+        new_points = len(candidates_outside)
+        if new_points > 0:
+            points[found_points:found_points +
+                   new_points, :] = candidates_outside
+            found_points += new_points
+
+    return points[:N]
 
 
 def _get_spherical_grid(N, radius=1.73205):
     """Projects a 2D grid onto a sphere with an offset at the poles to avoid singularities.
-    Will only return square numbers of points.      
+    Will only return square numbers of points.
 
     Args:
         N (int): Approximate number of points to create (lower square nr below will be selected in practice)

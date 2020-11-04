@@ -226,7 +226,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
     plt.show()
 
 
-def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=100, save_path=None, c=1.):
+def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=50, save_path=None, c=1., progressbar=False):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
     as a probability distribution and performing a rejection sampling approach
 
@@ -248,7 +248,8 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
     rho = []
     batch_size = 4096
     found = 0
-    pbar = tqdm(desc="Sampling points...", total=N)
+    if progressbar:
+        pbar = tqdm(desc="Sampling points...", total=N)
     while found < N:
         candidates = torch.rand(batch_size, 3) * 2 - 1
         nn_inputs = encoding(candidates)
@@ -262,9 +263,11 @@ def plot_model_rejection(model, encoding, N=30**3, views_2d=False, bw=False, alp
             return
         points.append(torch.tensor(candidates))
         rho.append(rho_candidates)
-        found += len(rho)
-        pbar.update(len(rho))
-    pbar.close()
+        found += len(rho_candidates)
+        if progressbar:
+            pbar.update(len(rho_candidates))
+    if progressbar:
+        pbar.close()
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
@@ -393,7 +396,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
             return
         points.append(torch.tensor(candidates))
         rho.append(rho_candidates)
-        found += len(rho)
+        found += len(rho_candidates)
         pbar.update(len(rho))
     pbar.close()
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N

@@ -396,7 +396,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
             return
         points.append(torch.tensor(candidates))
         rho.append(rho_candidates)
-        found += len(rho)
+        found += len(rho_candidates)
         pbar.update(len(rho))
     pbar.close()
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N

@@ -9,6 +9,7 @@ import numpy as np
 import pickle as pk
 import matplotlib.pyplot as plt
 import pandas as pd
+import warnings
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
 from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss
@@ -64,30 +65,34 @@ ENCODINGS = [                           # Encodings to test
 USE_ACC = True                         # Use acceleration instead of U
 if USE_ACC:
     INTEGRATOR = ACC_trap
-    EXPERIMENT_ID = EXPERIMENT_ID + "ACC"
+    EXPERIMENT_ID = EXPERIMENT_ID + "_" + "ACC"
 else:
     INTEGRATOR = U_trap_opt
-    EXPERIMENT_ID = EXPERIMENT_ID + "U"
+    EXPERIMENT_ID = EXPERIMENT_ID + "_" + "U"
 
 
-USE_SIRENS = True
-if USE_SIRENS:
-    EXPERIMENT_ID = EXPERIMENT_ID + "SIRENS"
+MODEL_TYPE = "siren"  # either "siren", "default", "nerf"
+EXPERIMENT_ID = EXPERIMENT_ID + "_" + MODEL_TYPE
 
 # We can now name the output folder
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder
 
 
-ACTIVATION = [                          # Activation function on the last layer
+ACTIVATION = [                          # Activation function on the last layer (only for NERF)
     torch.nn.Sigmoid(),
     # torch.nn.Softplus(),
     # torch.nn.Tanh(),
     # torch.nn.LeakyReLU(),
 ]
+if len(ACTIVATION) > 1 and MODEL_TYPE == "siren":
+    warnings.warn(
+        "Different activation functions are not compatible with Siren network.")
+
+
 SAVE_PLOTS = True                       # If plots should be saved.
 PLOTTING_POINTS = 2500                  # Points per rejection plot
 
-RESULTS = pd.DataFrame(columns=["Sample", "Type", "Loss", "Encoding", "Integrator", "Activation",
+RESULTS = pd.DataFrame(columns=["Sample", "Type", "Model", "Loss", "Encoding", "Integrator", "Activation",
                                 "Batch Size", "LR", "Target Sampler", "Integration Points", "Final Loss", "Final WeightedAvg Loss"])
 
 
@@ -177,12 +182,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
     # Init model
-    if USE_SIRENS:
-        model = init_network(encoding, n_neurons=100,
-                             activation=activation, model_type="siren")
-    else:
-        model = init_network(encoding, n_neurons=100,
-                             activation=activation, model_type="default")
+    model = init_network(encoding, n_neurons=100,
+                         activation=activation, model_type=MODEL_TYPE)
 
     # When a new network is created we init empty training logs and we init some loss trend indicators
     loss_log = []
@@ -244,12 +245,19 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     # store in results dataframe
     global RESULTS
     RESULTS = RESULTS.append(
-        {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Loss": loss_fn.__name__, "Encoding": encoding.name,
+        {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Model": MODEL_TYPE,  "Loss": loss_fn.__name__, "Encoding": encoding.name,
          "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
          "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS,
          "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1]},
         ignore_index=True
     )
+
+    # store run config
+    cfg = {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Model": MODEL_TYPE,  "Loss": loss_fn.__name__, "Encoding": encoding.name,
+           "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
+           "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS}
+    with open(run_folder+'config.pk', 'wb') as handle:
+        pk.dump(cfg, handle)
 
 
 def _make_folders():

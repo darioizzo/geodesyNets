@@ -7,6 +7,7 @@ import numpy as np
 import pyvista as pv
 import pyvistaqt as pvqt
 from tqdm import tqdm
+from scipy.spatial.transform import Rotation as rotation
 pv.set_plot_theme("night")
 
 
@@ -105,7 +106,7 @@ def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, ele
     p.show()
 
 
-def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
+def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views_2d=True, save_path=None):
     """Plots a mascon model
 
     Args:
@@ -130,8 +131,12 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
         normalized_masses = masses / sum(masses)
         normalized_masses = (normalized_masses * s * len(x)).cpu()
 
+# And we plot it
     fig = plt.figure()
-    ax = fig.add_subplot(221, projection='3d')
+    if views_2d:
+        ax = fig.add_subplot(221, projection='3d')
+    else:
+        ax = fig.add_subplot(111, projection='3d')
 
     # And visualize the masses
     ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
@@ -140,22 +145,26 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     ax.set_zlim([-1, 1])
     ax.view_init(elev=elev, azim=azim)
 
-    ax2 = fig.add_subplot(222)
-    ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
-    ax2.set_xlim([-1, 1])
-    ax2.set_ylim([-1, 1])
+    if views_2d:
+        ax2 = fig.add_subplot(222)
+        ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
+        ax2.set_xlim([-1, 1])
+        ax2.set_ylim([-1, 1])
 
-    ax3 = fig.add_subplot(223)
-    ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
-    ax3.set_xlim([-1, 1])
-    ax3.set_ylim([-1, 1])
+        ax3 = fig.add_subplot(223)
+        ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
+        ax3.set_xlim([-1, 1])
+        ax3.set_ylim([-1, 1])
 
-    ax4 = fig.add_subplot(224)
-    ax4.scatter(y, z, color='k', s=normalized_masses, alpha=alpha)
-    ax4.set_xlim([-1, 1])
-    ax4.set_ylim([-1, 1])
+        ax4 = fig.add_subplot(224)
+        ax4.scatter(y, z, color='k', s=normalized_masses, alpha=alpha)
+        ax4.set_xlim([-1, 1])
+        ax4.set_ylim([-1, 1])
 
-    plt.show()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+    else:
+        plt.show()
 
 
 def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c=1.):
@@ -350,7 +359,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     """Plots both the mascon and model rejection in one figure for direct comparison
 
     Args:
-        model (callable (N,M)->1): neural model for the asteroid. 
+        model (callable (N,M)->1): neural model for the asteroid.
         encoding: the encoding for the neural inputs.
         points (2-D array-like): an (N, 3) array-like object containing the coordinates of the points
         masses (1-D array-like): a (N,) array-like object containing the values for the point masses
@@ -439,6 +448,61 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
                 marker='.', c=col, s=s, alpha=alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+    else:
+        plt.show()
+
+
+def plot_model_contours(model, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., **plt_kwargs):
+    """Takes a mass density model and plots the density contours of its section with
+       a 2D plane
+
+    Args:
+        model (callable (N,M)->1): neural model for the asteroid.
+        section (Numpy array (3)): the section normal (can also be not of unitary magnitude)
+        N (int): number of points in each axis of the 2D grid
+        save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+        offset (float): an offset to apply to the plane in the direction of the section normal
+
+    """
+    # Builds a 2D grid on the z = 0 plane
+    x, y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
+    x = np.reshape(x, (-1,))
+    y = np.reshape(y, (-1,))
+    z = np.zeros(10000)
+    p = np.zeros((10000, 3))
+    p[:, 0] = x
+    p[:, 1] = y
+    p[:, 2] = z
+
+    # The cross product between the vertical and the desired direction ...
+    section = section / np.linalg.norm(section)
+    cp = np.cross(np.array([0, 0, 1]), section)
+    # safeguard against singularity
+    if np.linalg.norm(cp) > 1e-8:
+        # ... allows to find the rotation  amount ...
+        sint = np.linalg.norm(cp)
+        # ... and the axis ...
+        axis = cp / np.linalg.norm(cp)
+        # ... which we transform into a rotation vector (scipy convention)
+        rotvec = axis * np.arcsin(sint)
+    else:
+        rotvec = np.array([0., 0., 0.])
+    # ... used to build the rotation matrix
+    Rm = rotation.from_rotvec(rotvec).as_matrix()
+    # We rotate the points ...
+    newp = [np.dot(Rm, p[i, :]) for i in range(10000)]
+    # ... and translate
+    newp = newp + section * offset
+    # ... and compute them
+    rho = model(torch.tensor(newp, dtype=torch.float32))
+    Z = rho.reshape((100, 100)).cpu().detach().numpy()
+
+    X, Y = np.meshgrid(np.linspace(-1, 1, 100), np.linspace(-1, 1, 100))
+    plt.figure()
+    plt.contour(X, Y, Z, **plt_kwargs)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)

@@ -106,7 +106,7 @@ def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, ele
     p.show()
 
 
-def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
+def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views_2d=True, save_path=None):
     """Plots a mascon model
 
     Args:
@@ -131,8 +131,12 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
         normalized_masses = masses / sum(masses)
         normalized_masses = (normalized_masses * s * len(x)).cpu()
 
+# And we plot it
     fig = plt.figure()
-    ax = fig.add_subplot(221, projection='3d')
+    if views_2d:
+        ax = fig.add_subplot(221, projection='3d')
+    else:
+        ax = fig.add_subplot(111, projection='3d')
 
     # And visualize the masses
     ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
@@ -141,22 +145,26 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None):
     ax.set_zlim([-1, 1])
     ax.view_init(elev=elev, azim=azim)
 
-    ax2 = fig.add_subplot(222)
-    ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
-    ax2.set_xlim([-1, 1])
-    ax2.set_ylim([-1, 1])
+    if views_2d:
+        ax2 = fig.add_subplot(222)
+        ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
+        ax2.set_xlim([-1, 1])
+        ax2.set_ylim([-1, 1])
 
-    ax3 = fig.add_subplot(223)
-    ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
-    ax3.set_xlim([-1, 1])
-    ax3.set_ylim([-1, 1])
+        ax3 = fig.add_subplot(223)
+        ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
+        ax3.set_xlim([-1, 1])
+        ax3.set_ylim([-1, 1])
 
-    ax4 = fig.add_subplot(224)
-    ax4.scatter(y, z, color='k', s=normalized_masses, alpha=alpha)
-    ax4.set_xlim([-1, 1])
-    ax4.set_ylim([-1, 1])
+        ax4 = fig.add_subplot(224)
+        ax4.scatter(y, z, color='k', s=normalized_masses, alpha=alpha)
+        ax4.set_xlim([-1, 1])
+        ax4.set_ylim([-1, 1])
 
-    plt.show()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+    else:
+        plt.show()
 
 
 def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c=1.):

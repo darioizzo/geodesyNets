@@ -144,22 +144,34 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=elev, azim=azim)
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
 
     if views_2d:
         ax2 = fig.add_subplot(222)
         ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        ax2.set_aspect('equal', 'box')
 
         ax3 = fig.add_subplot(223)
         ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        ax3.set_aspect('equal', 'box')
 
         ax4 = fig.add_subplot(224)
         ax4.scatter(z, y, color='k', s=normalized_masses, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+        ax4.set_aspect('equal', 'box')
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
@@ -212,6 +224,9 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=45., azim=125.)
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
 
     if views_2d:
         ax2 = fig.add_subplot(222)
@@ -219,18 +234,27 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
                     marker='.', c=col, s=100, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        ax2.set_aspect('equal', 'box')
 
         ax3 = fig.add_subplot(223)
         ax3.scatter(X.reshape(-1, 1)[:, 0].cpu(), Z.reshape(-1, 1)[:, 0].cpu(),
                     marker='.', c=col, s=100, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        ax3.set_aspect('equal', 'box')
 
         ax4 = fig.add_subplot(224)
         ax4.scatter(Z.reshape(-1, 1)[:, 0].cpu(), Y.reshape(-1, 1)[:, 0].cpu(),
                     marker='.', c=col, s=100, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+        ax4.set_aspect('equal', 'box')
 
     plt.show()
 
@@ -296,6 +320,9 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=45., azim=125.)
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
 
     if views_2d:
         ax2 = fig.add_subplot(222)
@@ -303,18 +330,27 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
                     marker='.', c=col, s=s, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        ax2.set_aspect('equal', 'box')
 
         ax3 = fig.add_subplot(223)
         ax3.scatter(points[:, 0].cpu(), points[:, 2].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        ax3.set_aspect('equal', 'box')
 
         ax4 = fig.add_subplot(224)
         ax4.scatter(points[:, 2].cpu(), points[:, 1].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+        ax4.set_aspect('equal', 'box')
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
@@ -355,7 +391,7 @@ def plot_gradients_per_layer(model):
     plt.show()
 
 
-def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15]):
+def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False):
     """Plots both the mascon and model rejection in one figure for direct comparison
     Args:
         model (callable (N,M)->1): neural model for the asteroid.
@@ -369,6 +405,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         s (int): size of the non rejected points visualization
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         c (float, optional): Normalization constant. Defaults to 1.
+        progressbar (bool, optional): activates a progressbar. Defaults to False. 
         backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
     """
 
@@ -390,7 +427,8 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     rho = []
     batch_size = 4096
     found = 0
-    pbar = tqdm(desc="Sampling points...", total=N)
+    if progressbar:
+        pbar = tqdm(desc="Sampling points...", total=N)
     while found < N:
         candidates = torch.rand(batch_size, 3) * 2 - 1
         nn_inputs = encoding(candidates)
@@ -405,8 +443,10 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         points.append(torch.tensor(candidates))
         rho.append(rho_candidates)
         found += len(rho_candidates)
-        pbar.update(len(rho))
-    pbar.close()
+        if progressbar:
+            pbar.update(len(rho))
+    if progressbar:
+        pbar.close()
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 

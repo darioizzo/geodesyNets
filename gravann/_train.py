@@ -3,6 +3,7 @@ import torch
 from ._losses import contrastive_loss
 
 from .external._siren import Siren
+from .networks._nerf import NERF
 
 
 def _weights_init(m):
@@ -29,34 +30,9 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="d
         torch model: Initialized model
     """
     if model_type == "default":
-        model = nn.Sequential(
-            nn.Linear(encoding.dim, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, 1),
-            activation,
-        )
-
-        # Applying our weight initialization
-        _ = model.apply(_weights_init)
-
-        return model
-
+        return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation)
+    elif model_type == "nerf":
+        return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation, skip=[4])
     elif model_type == "siren":
         return Siren(in_features=encoding.dim, out_features=1, hidden_features=100,
                      hidden_layers=9, outermost_linear=True)

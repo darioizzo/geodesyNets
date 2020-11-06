@@ -256,7 +256,7 @@ def _check_model_encoding_compatibility(model, encoding):
     Raises:
         ValueError: Raises error if model in features != encoding out dim 
     """
-    if model[0].in_features != encoding.dim:
+    if model.in_features != encoding.dim:
         print("encoding is incompatible with the model")
         raise ValueError
 
@@ -273,8 +273,7 @@ def _compute_model_output(model, encoding, sample_points):
         torch tensor: computed values
     """
     # check dimensions match
-    # temporarily disabled as incompatible with non-subscriptable models
-    #_check_model_encoding_compatibility(model, encoding)
+    _check_model_encoding_compatibility(model, encoding)
 
     # 1 - compute the inputs to the ANN encoding the sampled points
     nn_inputs = encoding(sample_points)

@@ -121,6 +121,7 @@ def run():
 
     for sample in SAMPLES:
         print(f"\n--------------- STARTING {sample} ----------------")
+        print(f"\nModel: {MODEL_TYPE}")
         points, masses = _load_sample(sample)
 
         mesh = None
@@ -336,7 +337,7 @@ def _save_plots(model, encoding, mascon_points, gt_mesh, loss_log, weighted_aver
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,
-                         bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=folder + "rejection_plot_iter_9.png", c=c)
+                         bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=folder + "rejection_plot_iter_999999.png", c=c)
     print("Done.")
     print("Creating model_vs_mascon_rejection plot...", end="")
     plot_model_vs_mascon_rejection(
@@ -345,7 +346,7 @@ def _save_plots(model, encoding, mascon_points, gt_mesh, loss_log, weighted_aver
 
     print("Creating model_vs_mascon_contours plot...", end="")
     plot_model_vs_mascon_contours(
-        model, encoding, mascon_points, N=PLOTTING_POINTS, save_path=folder + "contour_plot_iter_9.png", c=c)
+        model, encoding, mascon_points, N=PLOTTING_POINTS, save_path=folder + "contour_plot_iter_999999.png", c=c)
     print("Done.")
 
     print("Creating loss plots...", end="")

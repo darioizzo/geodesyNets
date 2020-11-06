@@ -2,6 +2,18 @@ import torch
 import numpy as np
 import os
 import warnings
+import gc
+
+
+def print_torch_mem_footprint():
+    """Prints currently alive Tensors and Variables, from https://discuss.pytorch.org/t/how-to-debug-causes-of-gpu-memory-leaks/6741/2
+    """
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                print(type(obj), obj.size())
+        except:
+            pass
 
 
 def unpack_triangle_mesh(mesh_vertices, mesh_triangles):

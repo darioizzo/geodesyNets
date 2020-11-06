@@ -48,6 +48,7 @@ class Siren(nn.Module):
                  first_omega_0=30, hidden_omega_0=30.):
         super().__init__()
 
+        self.in_features = in_features
         self.net = []
         self.net.append(SineLayer(in_features, hidden_features,
                                   is_first=True, omega_0=first_omega_0))

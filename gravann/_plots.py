@@ -53,7 +53,6 @@ def plot_points(points):
     ax.scatter(points[:, 0].cpu().numpy(),
                points[:, 1].cpu().numpy(),
                points[:, 2].cpu().numpy())
-    plt.show()
 
 
 def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
@@ -175,8 +174,6 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
-    else:
-        plt.show()
 
 
 def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c=1.):
@@ -256,8 +253,6 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
         ax4.set_yticks([])
         ax4.set_aspect('equal', 'box')
 
-    plt.show()
-
 
 def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=50, save_path=None, c=1., progressbar=False):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
@@ -274,7 +269,7 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         s (int): size of the non rejected points visualization
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         c (float, optional): Normalization constant. Defaults to 1.
-        progressbar (bool optional): activates a progressbar. Defaults to False. 
+        progressbar (bool optional): activates a progressbar. Defaults to False.
     """
     torch.manual_seed(42)  # Seed torch to always get the same points
     points = []
@@ -354,8 +349,6 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
-    else:
-        plt.show()
 
 
 def plot_gradients_per_layer(model):
@@ -388,7 +381,6 @@ def plot_gradients_per_layer(model):
                 Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
 
     plt.tight_layout()
-    plt.show()
 
 
 def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False):
@@ -405,7 +397,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         s (int): size of the non rejected points visualization
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         c (float, optional): Normalization constant. Defaults to 1.
-        progressbar (bool, optional): activates a progressbar. Defaults to False. 
+        progressbar (bool, optional): activates a progressbar. Defaults to False.
         backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
     """
 
@@ -463,6 +455,9 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=45., azim=125.)
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
 
     ax2 = fig.add_subplot(222)
     ax2.set_facecolor(backcolor)
@@ -471,6 +466,9 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
                 marker='.', c=col, s=s, alpha=alpha)
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(223)
     ax3.set_facecolor(backcolor)
@@ -479,6 +477,9 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
                 marker='.', c=col, s=s, alpha=alpha)
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
+    ax3.set_xticks([])
+    ax3.set_yticks([])
+    ax3.set_aspect('equal', 'box')
 
     ax4 = fig.add_subplot(224)
     ax4.set_facecolor(backcolor)
@@ -487,11 +488,12 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
                 marker='.', c=col, s=s, alpha=alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
+    ax4.set_xticks([])
+    ax4.set_yticks([])
+    ax4.set_aspect('equal', 'box')
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
-    else:
-        plt.show()
 
 
 def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]):
@@ -510,7 +512,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         c (float, optional): Normalization constant. Defaults to 1.
         backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
-        progressbar (bool, optional): activates a progressbar. Defaults to False. 
+        progressbar (bool, optional): activates a progressbar. Defaults to False.
         levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
     """
 
@@ -522,10 +524,11 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     s = 22000 / len(mascon_points)
 
     if mascon_masses is None:
-        normalized_masses = s
+        normalized_masses = torch.tensor(
+            [1./len(mascon_points)] * len(mascon_points))
     else:
         normalized_masses = mascon_masses / sum(mascon_masses)
-        normalized_masses = (normalized_masses * s * len(x)).cpu()
+    normalized_masses = (normalized_masses * s * len(x)).cpu()
 
     torch.manual_seed(42)  # Seed torch to always get the same points
     points = []
@@ -584,8 +587,9 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         [0, 0, 1]), axes=ax2, levels=levels)
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
-    ax2.axes.xaxis.set_ticklabels([])
-    ax2.axes.yaxis.set_ticklabels([])
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(223)
     ax3.set_facecolor(backcolor)
@@ -597,8 +601,9 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         [0, 1, 0]), axes=ax3, levels=levels)
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
-    ax3.axes.xaxis.set_ticklabels([])
-    ax3.axes.yaxis.set_ticklabels([])
+    ax3.set_xticks([])
+    ax3.set_yticks([])
+    ax3.set_aspect('equal', 'box')
 
     ax4 = fig.add_subplot(224)
     ax4.set_facecolor(backcolor)
@@ -612,11 +617,12 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax4.set_ylim([-1, 1])
     ax4.axes.xaxis.set_ticklabels([])
     ax4.axes.yaxis.set_ticklabels([])
+    ax4.set_xticks([])
+    ax4.set_yticks([])
+    ax4.set_aspect('equal', 'box')
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
-    else:
-        plt.show()
 
 
 def plot_model_contours(model, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, **plt_kwargs):
@@ -675,5 +681,3 @@ def plot_model_contours(model, section=np.array([0, 0, 1]), N=100, save_path=Non
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
-    else:
-        plt.show()

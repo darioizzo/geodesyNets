@@ -19,41 +19,44 @@ from gravann import is_outside
 from gravann import enableCUDA, max_min_distance, fixRandomSeeds
 from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
-from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection
+from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection, plot_model_vs_mascon_contours
 
-EXPERIMENT_ID = "run_03_11_2020"
+EXPERIMENT_ID = "run_06_11_2020"
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
-ITERATIONS = 3000
+ITERATIONS = 1000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
     # "Eros.pk",
     # "Churyumov-Gerasimenko.pk",
-    # "Itokawa.pk",
+    # "Itokawa_non_uniform.pk",
+    # "Bennu_lp.pk",
     "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
-    # "sample_03_cluster_2284.pk",
+    # "sample_03_cluster_2284",
     # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    # "sample_04_cluster_7315",
     # "sample_06_cluster_6137.pk",
     # "sample_07_cluster_2441.pk",
     # "sample_08_cluster_1970.pk",
     # "sample_09_cluster_1896.pk"
 ]
 
-N_INTEGR_POINTS = 400000                # Number of integrations points for U
-TARGET_SAMPLER = [  # "spherical",          # How to sample target points
-    "cubical",
-]
+N_INTEGR_POINTS = 30000                # Number of integrations points for U
+TARGET_SAMPLER = ["spherical",      # How to sample target points
+                  # "cubical",
+                  ]
 SAMPLE_DOMAIN = [0.0,                   # Defines the distance of target points
                  1]
-BATCH_SIZES = [1000]                    # For training
+BATCH_SIZES = [100]                    # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
-    normalized_loss,
-    normalized_L1_loss,
-    contrastive_loss
+    mse_loss,
+    # normalized_loss,
+    # normalized_L1_loss,
+    # contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
@@ -71,7 +74,7 @@ else:
     EXPERIMENT_ID = EXPERIMENT_ID + "_" + "U"
 
 
-MODEL_TYPE = "siren"  # either "siren", "default", "nerf"
+MODEL_TYPE = "default"  # either "siren", "default", "nerf"
 EXPERIMENT_ID = EXPERIMENT_ID + "_" + MODEL_TYPE
 
 # We can now name the output folder
@@ -234,6 +237,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
             # Save a plot
             plot_model_rejection(model, encoding, views_2d=True, bw=True, N=PLOTTING_POINTS, alpha=0.1,
                                  s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c, progressbar=False)
+            plot_model_vs_mascon_contours(model, encoding, mascon_points, N=PLOTTING_POINTS,
+                                          save_path=run_folder + "contour_plot_iter" + format(it, '06d') + ".png", c=c)
             plt.close('all')
 
     _save_results(loss_log, weighted_average_log, model, run_folder)
@@ -331,11 +336,16 @@ def _save_plots(model, encoding, mascon_points, gt_mesh, loss_log, weighted_aver
 
     print("Creating rejection plot...", end="")
     plot_model_rejection(model, encoding, views_2d=True,
-                         bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=folder + "rejection_plot.png", c=c)
+                         bw=True, N=PLOTTING_POINTS, alpha=0.1, s=50, save_path=folder + "rejection_plot_iter_9.png", c=c)
     print("Done.")
     print("Creating model_vs_mascon_rejection plot...", end="")
     plot_model_vs_mascon_rejection(
         model, encoding, mascon_points, N=PLOTTING_POINTS, save_path=folder + "model_vs_mascon_rejection.png", c=c)
+    print("Done.")
+
+    print("Creating model_vs_mascon_contours plot...", end="")
+    plot_model_vs_mascon_contours(
+        model, encoding, mascon_points, N=PLOTTING_POINTS, save_path=folder + "contour_plot_iter_9.png", c=c)
     print("Done.")
 
     print("Creating loss plots...", end="")

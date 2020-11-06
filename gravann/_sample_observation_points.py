@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle as pk
+import pyvista as pv
 
 from ._utils import unpack_triangle_mesh
-from ._hulls import is_outside_torch
+from ._hulls import is_outside_torch, is_outside
 
 # There is no torch.pi so we define it here
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
@@ -22,6 +23,7 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
                                 (cubical, spherical) or a spherical grid (will not change each
                                 call). Defaults to "cubical".
         limit_shape_to_asteroid(str, optional): Path to a *.pk file specifies an asteroid shape to exclude from samples
+                                                or use for altitude sampling
 
     Returns:
         lambda: function to call to get sampled target points
@@ -35,10 +37,70 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
         elif method == "spherical_grid":
             points = _get_spherical_grid(N)
             return points
+        else:
+            raise ValueError("Method combination not available.")
     # Create domain limiter if passed
     else:
-        return _get_asteroid_limited_sampler(
-            N, method, bounds, limit_shape_to_asteroid)
+        if method == "altitude":
+            return _get_altitude_sampler(N, bounds[0], limit_shape_to_asteroid)
+        else:
+            return _get_asteroid_limited_sampler(
+                N, method, bounds, limit_shape_to_asteroid)
+
+
+def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True):
+    """This creates a sampler that samples from the triangle centers of the passed mesh + their normal
+
+    Args:
+        N (int): number of points to get per batch
+        altitude (float): altitude above the faces
+        limit_shape_to_asteroid (str): path of to asteroid mesh
+        plot_normals (bool, optional): Display normals and created points for debugging. Defaults to False.
+        discard_points_inside (bool, optional): Will discard all points that lie inside the asteroid (can happen for nonconvex ones). Defaults to True.
+
+    Returns:
+        func: sampler function
+    """
+    # print("Sampling ", limit_shape_to_asteroid, " at altitude=", altitude)
+
+    # Load asteroid triangles
+    with open(limit_shape_to_asteroid, "rb") as file:
+        mesh_vertices, mesh_triangles = pk.load(file)
+        mesh_faces = [[3, t[0], t[1], t[2]] for t in mesh_triangles]
+
+    # Create PV Polydata
+    mesh = pv.PolyData(np.asarray(mesh_vertices), np.asarray(mesh_faces))
+    # mesh.plot(show_scalar_bar=False)
+    mesh.compute_normals(cell_normals=True, point_normals=False,
+                         inplace=True, consistent_normals=False,
+                         non_manifold_traversal=False)
+
+    centers = mesh.cell_centers().points
+    points_at_altitude = centers + altitude * mesh['Normals']
+
+    if plot_normals:
+        mesh.plot()
+        plotter = pv.Plotter()
+        point_cloud = pv.PolyData(centers)
+        point_cloud["vectors"] = mesh['Normals']
+        arrows = point_cloud.glyph(
+            orient='vectors', scale=True, factor=0.1,)
+        plotter.add_mesh(arrows, color='lightblue')
+        plotter.add_mesh(points_at_altitude, color='red')
+        plotter.show_grid()
+        plotter.show()
+
+    if discard_points_inside:
+        # print("Discarding points inside asteroid. Prev len=",
+        #   len(points_at_altitude))
+        triangles = unpack_triangle_mesh(mesh_vertices, mesh_triangles)
+        points_at_altitude = points_at_altitude[is_outside_torch(
+            torch.tensor(points_at_altitude).float().detach(), triangles).detach().cpu().numpy()]
+        del triangles
+        # print("Now len=", len(points_at_altitude))
+
+    return lambda: torch.tensor(points_at_altitude[np.random.choice(
+        points_at_altitude.shape[0], N, replace=False), :])
 
 
 def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, sample_step_size=32):
@@ -47,7 +109,7 @@ def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_
 
     Args:
         N (int): Number of points to get each call
-        radius_bounds (list): Defaults to [1.1, 1.2]. Specifies the sampling radius.
+        bounds (list): Defaults to [1.1, 1.2]. Specifies the sampling radius. (First entry used as altitude for altitude sampling)
         method (str, optional): Utilized method. Currently supports random points from some volume
                                 (cubical, spherical) or a spherical grid (will not change each
                                 call). Defaults to "cubical".

@@ -208,6 +208,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     target_points = targets_point_sampler()
 
     t = tqdm(range(ITERATIONS), ncols=150)
+    # At the beginning (first plots) we assume no learned c
+    c = 1.
     for it in t:
         # Each hundred epochs we produce the plots
         if (it % 100 == 0):

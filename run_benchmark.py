@@ -21,19 +21,19 @@ from gravann import get_target_point_sampler
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection, plot_model_vs_mascon_contours
 
-EXPERIMENT_ID = "run_06_11_2020"
+EXPERIMENT_ID = "run_09_11_2020"
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
-ITERATIONS = 1000
+ITERATIONS = 4000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    # "Eros.pk",
+    "Eros.pk",
     # "Churyumov-Gerasimenko.pk",
     # "Itokawa_non_uniform.pk",
     # "Bennu_lp.pk",
-    "sample_01_cluster_2400.pk",
+    # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284",
     # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
@@ -44,24 +44,24 @@ SAMPLES = [                                         # Use some specific samples
     # "sample_09_cluster_1896.pk"
 ]
 
-N_INTEGR_POINTS = 30000                # Number of integrations points for U
-TARGET_SAMPLER = ["spherical",      # How to sample target points
+N_INTEGR_POINTS = 400000                # Number of integrations points for U
+TARGET_SAMPLER = ["spherical",          # How to sample target points
                   # "cubical",
                   ]
 SAMPLE_DOMAIN = [0.0,                   # Defines the distance of target points
                  1]
-BATCH_SIZES = [100]                    # For training
+BATCH_SIZES = [1000]                    # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
     mse_loss,
-    # normalized_loss,
-    # normalized_L1_loss,
-    # contrastive_loss
+    normalized_loss,
+    normalized_L1_loss,
+    contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
-    directional_encoding(),
-    # direct_encoding(),
+    # directional_encoding(),
+    direct_encoding(),
     # positional_encoding(3),
     # spherical_coordinates()
 ]
@@ -74,7 +74,7 @@ else:
     EXPERIMENT_ID = EXPERIMENT_ID + "_" + "U"
 
 
-MODEL_TYPE = "default"  # either "siren", "default", "nerf"
+MODEL_TYPE = "siren"  # either "siren", "default", "nerf"
 EXPERIMENT_ID = EXPERIMENT_ID + "_" + MODEL_TYPE
 
 # We can now name the output folder
@@ -209,6 +209,14 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
     t = tqdm(range(ITERATIONS), ncols=150)
     for it in t:
+        # Each hundred epochs we produce the plots
+        if (it % 100 == 0):
+            # Save a plot
+            plot_model_rejection(model, encoding, views_2d=True, bw=True, N=PLOTTING_POINTS, alpha=0.1,
+                                 s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c, progressbar=False)
+            plot_model_vs_mascon_contours(model, encoding, mascon_points, N=PLOTTING_POINTS,
+                                          save_path=run_folder + "contour_plot_iter" + format(it, '06d') + ".png", c=c)
+            plt.close('all')
         # Each ten epochs we resample the target points
         if (it % 10 == 0):
             target_points = targets_point_sampler()
@@ -233,14 +241,6 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
         t.set_postfix_str(
             f"Loss={loss.item():.3e} | WeightedAvg={wa_out:.3e}\t | c={c:.3e}")
-        # Each hundred epochs we produce the plots
-        if (it % 100 == 0):
-            # Save a plot
-            plot_model_rejection(model, encoding, views_2d=True, bw=True, N=PLOTTING_POINTS, alpha=0.1,
-                                 s=50, save_path=run_folder + "rejection_plot_iter" + format(it, '06d') + ".png", c=c, progressbar=False)
-            plot_model_vs_mascon_contours(model, encoding, mascon_points, N=PLOTTING_POINTS,
-                                          save_path=run_folder + "contour_plot_iter" + format(it, '06d') + ".png", c=c)
-            plt.close('all')
 
     _save_results(loss_log, weighted_average_log, model, run_folder)
 

@@ -558,9 +558,9 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(dpi=150, facecolor=backcolor)
+    fig = plt.figure(dpi=150)
     ax = fig.add_subplot(221, projection='3d')
-    ax.set_facecolor(backcolor)
+    # ax.set_facecolor(backcolor)
     col = 'cornflowerblue'
 
     # And we plot it
@@ -578,7 +578,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mascon_slice_thickness = 0.05
 
     ax2 = fig.add_subplot(222)
-    ax2.set_facecolor(backcolor)
+    # ax2.set_facecolor(backcolor)
     mask = torch.logical_and(z < mascon_slice_thickness,
                              z > -mascon_slice_thickness)
     ax2.scatter(x[mask], y[mask], color='k',
@@ -592,7 +592,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(223)
-    ax3.set_facecolor(backcolor)
+    # ax3.set_facecolor(backcolor)
     mask = torch.logical_and(y < mascon_slice_thickness,
                              y > -mascon_slice_thickness)
     ax3.scatter(x[mask], z[mask], color='k',
@@ -606,7 +606,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.set_aspect('equal', 'box')
 
     ax4 = fig.add_subplot(224)
-    ax4.set_facecolor(backcolor)
+    # ax4.set_facecolor(backcolor)
     mask = torch.logical_and(x < mascon_slice_thickness,
                              x > -mascon_slice_thickness)
     ax4.scatter(z[mask], y[mask], color='k',

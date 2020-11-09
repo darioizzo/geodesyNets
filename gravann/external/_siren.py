@@ -74,7 +74,8 @@ class Siren(nn.Module):
     def forward(self, coords):
         coords = coords.clone().detach().requires_grad_(
             True)  # allows to take derivative w.r.t. input
-        output = self.net(coords)
+        # We must force the putput to be positive as it represents a density.
+        output = torch.abs(self.net(coords))
         return output
 
     def forward_with_activations(self, coords, retain_grad=False):

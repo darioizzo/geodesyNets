@@ -48,10 +48,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
                     total=N * (len(sampling_altitudes) + 1))
 
     ###############################################
-    # Compute validation for random points
+    # Compute validation for random points (outside the asteroid)
+    torch.cuda.empty_cache()
     pred, labels, loss_values = [], [], []
     target_sampler = get_target_point_sampler(
-        batch_size, method="spherical", bounds=[0, 1])
+        batch_size, method="spherical", bounds=[0, 1], limit_shape_to_asteroid=asteroid_pk_path)
     for batch in range(N // batch_size):
         target_points = target_sampler().detach()
         labels.append(label_function(

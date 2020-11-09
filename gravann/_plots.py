@@ -584,7 +584,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.scatter(x[mask], y[mask], color='k',
                 s=normalized_masses[mask], alpha=0.5)
     plot_model_contours(model, encoding, section=np.array(
-        [0, 0, 1]), axes=ax2, levels=levels)
+        [0, 0, 1]), axes=ax2, levels=levels, c=c)
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
     ax2.set_xticks([])
@@ -598,7 +598,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.scatter(x[mask], z[mask], color='k',
                 s=normalized_masses[mask], alpha=0.5)
     plot_model_contours(model, encoding, section=np.array(
-        [0, 1, 0]), axes=ax3, levels=levels)
+        [0, 1, 0]), axes=ax3, levels=levels, c=c)
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
     ax3.set_xticks([])
@@ -612,7 +612,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax4.scatter(z[mask], y[mask], color='k',
                 s=normalized_masses[mask], alpha=0.5)
     plot_model_contours(model, encoding, section=np.array(
-        [1, 0, 0]), axes=ax4, levels=levels)
+        [1, 0, 0]), axes=ax4, levels=levels, c=c)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
     ax4.axes.xaxis.set_ticklabels([])
@@ -625,7 +625,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         plt.savefig(save_path, dpi=150)
 
 
-def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, **plt_kwargs):
+def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., **plt_kwargs):
     """Takes a mass density model and plots the density contours of its section with
        a 2D plane
 
@@ -670,7 +670,7 @@ def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, sav
     newp = newp + section * offset
     # ... and compute them
     inp = encoding(torch.tensor(newp, dtype=torch.float32))
-    rho = model(inp)
+    rho = model(inp) * c
     Z = rho.reshape((100, 100)).cpu().detach().numpy()
 
     X, Y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))

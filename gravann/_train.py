@@ -24,13 +24,39 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="d
         encoding (encoding): encoding instance to use for the network
         n_neurons (int, optional): Number of neurons per layer. Defaults to 100.
         activation (torch activation function, optional): Activation function for the last network layer. Defaults to nn.Sigmoid().
-        model_type (str,optional): Defines what model to use. Available "siren" "default". Defaults to "default".
+        model_type (str,optional): Defines what model to use. Available "siren", "default", "nerf". Defaults to "default".
 
     Returns:
         torch model: Initialized model
     """
     if model_type == "default":
-        return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation)
+        model = nn.Sequential(
+            nn.Linear(encoding.dim, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, n_neurons),
+            nn.ReLU(),
+            nn.Linear(n_neurons, 1),
+            activation
+        )
+
+        # Applying our weight initialization
+        _ = model.apply(_weights_init)
+        model.in_features = encoding.dim
+        return model
     elif model_type == "nerf":
         return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation, skip=[4])
     elif model_type == "siren":

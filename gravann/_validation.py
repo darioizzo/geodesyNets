@@ -9,7 +9,7 @@ from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
 
 def validation(model, encoding, mascon_points, mascon_masses,
-               use_acc, asteroid_pk_path, N=5000, N_integration=500000, batch_size=32, progressbar=True):
+               use_acc, asteroid_pk_path, N=5000, N_integration=500000, batch_size=100, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -48,10 +48,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
                     total=N * (len(sampling_altitudes) + 1))
 
     ###############################################
-    # Compute validation for random points
+    # Compute validation for random points (outside the asteroid)
+    torch.cuda.empty_cache()
     pred, labels, loss_values = [], [], []
     target_sampler = get_target_point_sampler(
-        batch_size, method="spherical", bounds=[0, 1])
+        batch_size, method="spherical", bounds=[0, 1], limit_shape_to_asteroid=asteroid_pk_path)
     for batch in range(N // batch_size):
         target_points = target_sampler().detach()
         labels.append(label_function(

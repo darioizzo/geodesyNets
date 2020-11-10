@@ -64,7 +64,7 @@ class Siren(nn.Module):
                 final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0,
                                              np.sqrt(6 / hidden_features) / hidden_omega_0)
 
-            self.net.append(final_linear)
+            self.net.append(final_linear.abs())
         else:
             self.net.append(SineLayer(hidden_features, out_features,
                                       is_first=False, omega_0=hidden_omega_0))
@@ -75,7 +75,7 @@ class Siren(nn.Module):
         coords = coords.clone().detach().requires_grad_(
             True)  # allows to take derivative w.r.t. input
         # We must force the putput to be positive as it represents a density.
-        output = torch.abs(self.net(coords))
+        output = self.net(coords)
         return output
 
     def forward_with_activations(self, coords, retain_grad=False):

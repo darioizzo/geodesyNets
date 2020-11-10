@@ -35,9 +35,9 @@ SAMPLES = [                                         # Use some specific samples
     # "Bennu_lp.pk",
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
-    # "sample_03_cluster_2284",
+    # "sample_03_cluster_2284.pk",
     # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
-    # "sample_04_cluster_7315",
+    # "sample_04_cluster_7315.pk",
     # "sample_06_cluster_6137.pk",
     # "sample_07_cluster_2441.pk",
     # "sample_08_cluster_1970.pk",
@@ -53,10 +53,10 @@ SAMPLE_DOMAIN = [0.0,                   # Defines the distance of target points
 BATCH_SIZES = [1000]                    # For training
 LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
-    mse_loss,
+    # mse_loss,
     normalized_loss,
-    normalized_L1_loss,
-    contrastive_loss
+    # normalized_L1_loss,
+    # contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
@@ -74,7 +74,7 @@ else:
     EXPERIMENT_ID = EXPERIMENT_ID + "_" + "U"
 
 
-MODEL_TYPE = "siren"  # either "siren", "default", "nerf"
+MODEL_TYPE = "default"  # either "siren", "default", "nerf"
 EXPERIMENT_ID = EXPERIMENT_ID + "_" + MODEL_TYPE
 
 # We can now name the output folder

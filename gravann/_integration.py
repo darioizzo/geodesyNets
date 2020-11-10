@@ -16,7 +16,7 @@ sobol_points = sobol_seq.i4_sobol_generate(3, 200000)
 # Naive Montecarlo method for the potential
 
 
-def U_mc(target_points, model, encoding=direct_encoding(), N=3000):
+def U_mc(target_points, model, encoding=direct_encoding(), N=3000, domain=None):
     """Plain Monte Carlo evaluation of the potential from the modelled density
 
     Args:
@@ -24,7 +24,12 @@ def U_mc(target_points, model, encoding=direct_encoding(), N=3000):
         model (callable (a,b)->1): neural model for the asteroid. 
         encoding: the encoding for the neural inputs.
         N (int): number of points.
+        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
     """
+    if domain is not None:
+        raise NotImplementedError(
+            "Custom domain is not yet implemented for U_mc.")
+
     # init result vector
     retval = torch.empty(len(target_points), 1)
 
@@ -43,7 +48,7 @@ def U_mc(target_points, model, encoding=direct_encoding(), N=3000):
 # Low-discrepancy Montecarlo for the potential
 
 
-def U_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
+def U_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
     """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
 
     Args:
@@ -52,7 +57,12 @@ def U_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
         encoding: the encoding for the neural inputs.
         N (int): number of points.
         noise (float): random noise added to point positions.
+        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
     """
+    if domain is not None:
+        raise NotImplementedError(
+            "Custom domain is not yet implemented for U_ld.")
+
     # init result vector
     retval = torch.empty(len(target_points), 1,
                          device=os.environ["TORCH_DEVICE"])
@@ -79,7 +89,7 @@ def U_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
 # Trapezoid rule for the potential
 
 
-def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None):
+def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None, domain=None):
     """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
 
     Args:
@@ -91,10 +101,15 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
         noise (float): random noise added to point positions.
         sample_points (torch tensor): grid to sample the integral on
         h (float): grid spacing, only has to be passed if grid is passed.
+        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
 
     Returns:
         Tensor: Computed potentials per point
     """
+    if domain is not None:
+        raise NotImplementedError(
+            "Custom domain is not yet implemented for U_trap_opt.")
+
     # init result vector
     retval = torch.empty(len(target_points), 1,
                          device=os.environ["TORCH_DEVICE"])
@@ -118,11 +133,11 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
         evaluations = f_values.reshape([N, N, N])  # map to z,y,x
 
         # area = h / 2 * (f0 + f2)
-        int_x = h / 2 * (evaluations[:, :, 0:-1] + evaluations[:, :, 1:])
+        int_x = h[0] / 2 * (evaluations[:, :, 0:-1] + evaluations[:, :, 1:])
         int_x = torch.sum(int_x, dim=2)
-        int_y = h / 2 * (int_x[:, 0:-1] + int_x[:, 1:])
+        int_y = h[1] / 2 * (int_x[:, 0:-1] + int_x[:, 1:])
         int_y = torch.sum(int_y, dim=1)
-        int_z = h / 2 * (int_y[0:-1] + int_y[1:])
+        int_z = h[2] / 2 * (int_y[0:-1] + int_y[1:])
         int_z = torch.sum(int_z, dim=0)
 
         retval[i] = int_z
@@ -131,7 +146,7 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
 # Low-discrepancy Montecarlo for the acceleration
 
 
-def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5):
+def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
     """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
 
     Args:
@@ -140,7 +155,12 @@ def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5)
         encoding: the encoding for the neural inputs.
         N (int): number of points.
         noise (float): random noise added to point positions.
+        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
     """
+    if domain is not None:
+        raise NotImplementedError(
+            "Custom domain is not yet implemented for ACC_ld.")
+
     # init result vector
     retval = torch.empty(len(target_points), 3,
                          device=os.environ["TORCH_DEVICE"])
@@ -168,7 +188,7 @@ def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5)
     return - 8 * retval
 
 
-def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None):
+def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None, domain=None):
     """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
 
     Args:
@@ -180,10 +200,15 @@ def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=
         noise (float): random noise added to point positions.
         sample_points (torch tensor): grid to sample the integral on
         h (float): grid spacing, only has to be passed if grid is passed.
+        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3 
 
     Returns:
         Tensor: Computed potentials per point
     """
+
+    if domain is None:  # None might be passed as well
+        domain = [[-1, 1], [-1, 1], [-1, 1]]
+
     # init result vector
     retval = torch.empty(len(target_points), 3,
                          device=os.environ["TORCH_DEVICE"])
@@ -208,33 +233,46 @@ def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=
         evaluations = f_values.reshape([N, N, N, 3])  # map to z,y,x
 
         # area = h / 2 * (f0 + f2)
-        int_x = h / 2 * (evaluations[:, :, 0:-1, :] + evaluations[:, :, 1:, :])
+        int_x = h[0] / 2 * (evaluations[:, :, 0:-1, :] +
+                            evaluations[:, :, 1:, :])
         int_x = torch.sum(int_x, dim=2)
-        int_y = h / 2 * (int_x[:, 0:-1, :] + int_x[:, 1:, :])
+        int_y = h[1] / 2 * (int_x[:, 0:-1, :] + int_x[:, 1:, :])
         int_y = torch.sum(int_y, dim=1)
-        int_z = h / 2 * (int_y[0:-1, :] + int_y[1:, :])
+        int_z = h[2] / 2 * (int_y[0:-1, :] + int_y[1:, :])
         int_z = torch.sum(int_z, dim=0)
 
         retval[i] = int_z
     return -retval
 
 
-def compute_integration_grid(N, noise=0.0):
+def compute_integration_grid(N, noise=0.0, domain=[[-1, 1], [-1, 1], [-1, 1]]):
     """Creates a grid which can be used for the trapezoid integration
 
     Args:
         N (int): Number of points to approximately  generate
         noise (float, optional): Amount of noise to add to points (can be used to sample nearby points). Defaults to 0.
+        domain (torch.tensor): integration domain [3,2]
 
     Returns:
         torch tensor, float, int: sample points, grid h, nr of points
     """
     N = int(np.round(np.cbrt(N)))  # approximate subdivisions
 
+    h = torch.zeros([3], device=os.environ["TORCH_DEVICE"])
     # Create grid and assemble evaluation points
-    grid_1d = torch.linspace(-1, 1, N, device=os.environ["TORCH_DEVICE"])
-    h = (grid_1d[1] - grid_1d[0])
-    x, y, z = torch.meshgrid(grid_1d, grid_1d, grid_1d)
+
+    grid_1d_x = torch.linspace(
+        domain[0][0], domain[0][1], N, device=os.environ["TORCH_DEVICE"])
+    grid_1d_y = torch.linspace(
+        domain[1][0], domain[1][1], N, device=os.environ["TORCH_DEVICE"])
+    grid_1d_z = torch.linspace(
+        domain[2][0], domain[2][1], N, device=os.environ["TORCH_DEVICE"])
+
+    h[0] = (grid_1d_x[1] - grid_1d_x[0])
+    h[1] = (grid_1d_y[1] - grid_1d_y[0])
+    h[2] = (grid_1d_z[1] - grid_1d_z[0])
+
+    x, y, z = torch.meshgrid(grid_1d_x, grid_1d_y, grid_1d_z)
     eval_points = torch.stack((x.flatten(), y.flatten(), z.flatten())).transpose(
         0, 1).to(os.environ["TORCH_DEVICE"])
 

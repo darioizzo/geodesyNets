@@ -8,6 +8,15 @@ from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
 
+def validation_results_df_to_string(validation_results):
+    result_strings = {}
+    for idx, val in validation_results.iterrows():
+        result_strings[val["Altitude"]
+                       ] = f'ContrL={val["Contrastive Loss"]:.3e},NormL1={val["Normalized L1 Loss"]:.3e},NormL2={val["Normalized Loss"]:.3e}'
+
+    return result_strings
+
+
 def validation(model, encoding, mascon_points, mascon_masses,
                use_acc, asteroid_pk_path, N=5000, N_integration=500000, batch_size=100, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision

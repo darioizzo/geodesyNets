@@ -9,7 +9,7 @@ from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
 
 def validation(model, encoding, mascon_points, mascon_masses,
-               use_acc, asteroid_pk_path, N=5000, N_integration=500000, batch_size=32, progressbar=True):
+               use_acc, asteroid_pk_path, N=5000, N_integration=500000, batch_size=100, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:

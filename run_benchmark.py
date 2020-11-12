@@ -24,7 +24,7 @@ from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model
 
 EXPERIMENT_ID = "run_10_11_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"            # Select GPUs
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 5000
@@ -67,8 +67,8 @@ ENCODINGS = [                           # Encodings to test
     # spherical_coordinates()
 ]
 
-USE_VISUAL_LOSS = True                 # Add visual loss term to force rho->0 outside
-LIMIT_INTEGRATION_DOMAIN = True        # Sample integration points in asteroid
+USE_VISUAL_LOSS = False                  # Add visual loss term to force rho->0 outside
+LIMIT_INTEGRATION_DOMAIN = False         # Sample integration points in asteroid
 
 USE_ACC = True                         # Use acceleration instead of U
 if USE_ACC:
@@ -79,14 +79,14 @@ else:
     EXPERIMENT_ID = EXPERIMENT_ID + "_" + "U"
 
 
-MODEL_TYPE = "siren"  # either "siren", "default", "nerf"
+MODEL_TYPE = "default"  # either "siren", "default", "nerf"
 EXPERIMENT_ID = EXPERIMENT_ID + "_" + MODEL_TYPE
 
 if USE_VISUAL_LOSS:
-    EXPERIMENT_ID + "_" + "visual"
+    EXPERIMENT_ID += "_" + "visual"
 
 if LIMIT_INTEGRATION_DOMAIN:
-    EXPERIMENT_ID + "_" + "ltdIntegr"
+    EXPERIMENT_ID += "_" + "ltdIntegr"
 
 # We can now name the output folder
 OUTPUT_FOLDER = "results/" + EXPERIMENT_ID + "/"    # Results folder

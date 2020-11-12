@@ -93,7 +93,7 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
         loss = loss_fn(predicted.view(-1), labels.view(-1))
 
     # Urge points outside asteroid to have 0 density.
-    vision_loss = 0
+    vision_loss = torch.tensor([0])
     if vision_targets is not None:
         encoded_vision_targets = encoding(vision_targets)
         predictions_at_visiont_targets = model(encoded_vision_targets)

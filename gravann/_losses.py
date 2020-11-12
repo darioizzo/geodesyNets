@@ -93,6 +93,20 @@ def normalized_L1_loss(predicted, labels):
     return torch.sum(torch.abs(torch.sub(labels, c*predicted))) / len(labels)
 
 
+def normalized_sqrt_L1_loss(predicted, labels):
+    """Computes the sqrt of the minimal L1 loss between labels and predicted for some scaling parameter c
+
+    Args:
+        predicted (torch.tensor): model predictions
+        labels (torch.tensor): ground truth labels
+    Returns:
+        [torch.tensor]: mean normalized + contrastive loss
+    """
+    c = torch.sum(torch.mul(labels, predicted)) / \
+        torch.sum(torch.pow(predicted, 2))
+    return torch.sum(torch.sqrt(torch.abs(torch.sub(labels, c*predicted)))) / len(labels)
+
+
 def mse_loss(predicted, labels):
     """Computes the mean squared error between labels and predictions
 

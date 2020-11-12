@@ -8,6 +8,28 @@ from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
 
+def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
+    """Computes the current c constant for a model.
+
+    Args:
+        model (torch.nn): trained model
+        encoding (encoding): encoding to use for the points
+        mascon_points (torch.tensor): asteroid mascon points
+        mascon_masses (torch.tensor): asteroid mascon masses
+        use_acc (bool): if acceleration should be used (otherwise potential)
+    """
+    targets_point_sampler = get_target_point_sampler(
+        500, method="spherical", bounds=[1.0, 1.1])
+    target_points = targets_point_sampler()
+    if use_acc:
+        labels = ACC_L(target_points, mascon_points, mascon_masses)
+        predicted = ACC_trap(target_points, model, encoding, N=100000)
+    else:
+        labels = U_L(target_points, mascon_points, mascon_masses)
+        predicted = U_trap_opt(target_points, model, encoding, N=100000)
+    return (torch.sum(predicted*labels)/torch.sum(predicted*predicted)).item()
+
+
 def validation_results_df_to_string(validation_results):
     result_strings = {}
     for idx, val in validation_results.iterrows():

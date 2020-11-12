@@ -63,7 +63,8 @@ def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
         encoding (Encoding function): The function used to encode points for the model
         interactive (bool, optional): Creates a separate window which you can use interactively. Defaults to True.
     """
-    mesh = create_mesh_from_model(model, encoding, rho_threshold=rho_threshold)
+    mesh = create_mesh_from_model(
+        model, encoding, rho_threshold=rho_threshold, plot_each_it=-1)
     plot_mesh(mesh, smooth_shading=True,
               show_edges=False, interactive=interactive)
     return mesh
@@ -79,7 +80,7 @@ def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interact
         interactive (bool): Creates a separate window which you can use interactively.
     """
     mesh = create_mesh_from_cloud(cloud.cpu().numpy(
-    ), use_top_k=use_top_k, distance_threshold=distance_threshold)
+    ), use_top_k=use_top_k, distance_threshold=distance_threshold, plot_each_it=-1)
     plot_mesh(mesh, smooth_shading=True,
               show_edges=False, interactive=interactive)
     return mesh
@@ -483,7 +484,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
 
     ax4 = fig.add_subplot(224)
     ax4.set_facecolor(backcolor)
-    ax4.scatter(z, y, color='k', s=normalized_masses, alpha=0.5)
+    ax4.scatter(y, z, color='k', s=normalized_masses, alpha=0.5)
     ax4.scatter(points[:, 1].cpu(), points[:, 2].cpu(),
                 marker='.', c=col, s=s, alpha=alpha)
     ax4.set_xlim([-1, 1])
@@ -675,7 +676,7 @@ def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, sav
 
     X, Y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
     if axes is None:
-        plt.figure()
+        fig = plt.figure()
         ax = fig.add_subplot(111)
     else:
         ax = axes

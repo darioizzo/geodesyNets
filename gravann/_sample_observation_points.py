@@ -4,6 +4,8 @@ import numpy as np
 import os
 import pickle as pk
 import pyvista as pv
+import warnings
+from scipy.spatial import KDTree
 
 from ._utils import unpack_triangle_mesh
 from ._hulls import is_outside_torch, is_outside
@@ -89,6 +91,15 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         plotter.add_mesh(points_at_altitude, color='red')
         plotter.show_grid()
         plotter.show()
+
+    # Discard points that are to close
+    eps = 1e-4  # maximum altitude error
+    kd_tree = KDTree(centers)
+    distances, _ = kd_tree.query(points_at_altitude, k=1)
+    is_too_close = np.abs(altitude-distances) > eps
+    warnings.warn("Discarding " + str(np.sum(is_too_close)) + " of " + str(len(is_too_close)) +
+                  " points in altitude sampler due to too small altitude.")
+    points_at_altitude = points_at_altitude[is_too_close]
 
     if discard_points_inside:
         # print("Discarding points inside asteroid. Prev len=",

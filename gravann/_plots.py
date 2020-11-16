@@ -1,5 +1,10 @@
+from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
+from ._integration import ACC_trap
+from ._mascon_labels import ACC_L
+
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from matplotlib.lines import Line2D
 import torch
 import math
@@ -139,7 +144,7 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views
         ax = fig.add_subplot(111, projection='3d')
 
     # And visualize the masses
-    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
+    ax.scatter(x, y, z, colomascon_color, s=normalized_masses, alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -497,7 +502,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         plt.savefig(save_path, dpi=150)
 
 
-def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]):
+def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], offset=0.0, heatmap=False, mascon_alpha=0.5):
     """Plots both the mascon and model contours in one figure for direct comparison
 
     Args:
@@ -515,6 +520,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
         progressbar (bool, optional): activates a progressbar. Defaults to False.
         levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
+        offset (float): an offset to apply to the plane in the direction of the section normal
     """
 
     # Mascon masses
@@ -559,10 +565,11 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(dpi=150)
+    fig = plt.figure(figsize=(10, 8), dpi=150)
     ax = fig.add_subplot(221, projection='3d')
     # ax.set_facecolor(backcolor)
     col = 'cornflowerblue'
+    mascon_color = "green"
 
     # And we plot it
     ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.5)
@@ -572,61 +579,212 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=45., azim=125.)
-    ax.axes.xaxis.set_ticklabels([])
-    ax.axes.yaxis.set_ticklabels([])
-    ax.axes.zaxis.set_ticklabels([])
+    ax.tick_params(labelsize=7)
+    ax.set_xlabel("X", fontsize=9)
+    ax.set_ylabel("Y", fontsize=9)
+    ax.set_zlabel("Z", fontsize=9)
+
+    # X Rectangle
+    ax.plot_wireframe(np.asarray([[0, 0], [0, 0]])+offset, np.asarray([[1, 1], [-1, -1]]),
+                      np.asarray([[-1, 1], [-1, 1]]), color="red", linestyle="--", alpha=0.75)
+    # Y Rectangle
+    ax.plot_wireframe(np.asarray([[1, 1], [-1, -1]]), np.asarray([[0, 0], [0, 0]])+offset,
+                      np.asarray([[-1, 1], [-1, 1]]), color="blue", linestyle="--", alpha=0.75)
+    # Z Rectangle
+    ax.plot_wireframe(np.asarray([[-1, 1], [-1, 1]]), np.asarray([[1, 1], [-1, -1]]),
+                      np.asarray([[0, 0], [0, 0]])+offset, color="green", linestyle="--", alpha=0.75)
+    ax.set_title("3D View")
 
     mascon_slice_thickness = 0.05
 
     ax2 = fig.add_subplot(222)
     # ax2.set_facecolor(backcolor)
-    mask = torch.logical_and(z < mascon_slice_thickness,
-                             z > -mascon_slice_thickness)
-    ax2.scatter(x[mask], y[mask], color='k',
-                s=normalized_masses[mask], alpha=0.5)
-    plot_model_contours(model, encoding, section=np.array(
-        [0, 0, 1]), axes=ax2, levels=levels, c=c)
+    mask = torch.logical_and(z - offset < mascon_slice_thickness,
+                             z - offset > -mascon_slice_thickness)
+    _ = plot_model_contours(model, encoding, section=np.array(
+        [0, 0, 1]), axes=ax2, levels=levels, c=c, offset=offset, heatmap=heatmap)
+    ax2.scatter(x[mask], y[mask], color=mascon_color,
+                s=normalized_masses[mask], alpha=mascon_alpha)
+
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
-    ax2.set_xticks([])
-    ax2.set_yticks([])
+    ax2.tick_params(labelsize=7, color="green")
+    ax2.set_xlabel("X", fontsize=9)
+    ax2.set_ylabel("Y", fontsize=9)
+    ax2.spines['bottom'].set_color('green')
+    ax2.spines['top'].set_color('green')
+    ax2.spines['right'].set_color('green')
+    ax2.spines['left'].set_color('green')
+    ax2.set_title("X-Y cross section (green slice)")
     ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(223)
     # ax3.set_facecolor(backcolor)
-    mask = torch.logical_and(y < mascon_slice_thickness,
-                             y > -mascon_slice_thickness)
-    ax3.scatter(x[mask], z[mask], color='k',
-                s=normalized_masses[mask], alpha=0.5)
-    plot_model_contours(model, encoding, section=np.array(
-        [0, 1, 0]), axes=ax3, levels=levels, c=c)
+    mask = torch.logical_and(y - offset < mascon_slice_thickness,
+                             y - offset > -mascon_slice_thickness)
+    _ = plot_model_contours(model, encoding, section=np.array(
+        [0, 1, 0]), axes=ax3, levels=levels, c=c, offset=offset, heatmap=heatmap)
+    ax3.scatter(x[mask], z[mask], color=mascon_color,
+                s=normalized_masses[mask], alpha=mascon_alpha)
+
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
-    ax3.set_xticks([])
-    ax3.set_yticks([])
+    ax3.set_xlabel("X", fontsize=9)
+    ax3.set_ylabel("Z", fontsize=9)
+    ax3.set_title("X-Z cross section (blue slice)")
+    ax3.tick_params(labelsize=7, color="blue")
+    ax3.spines['bottom'].set_color('blue')
+    ax3.spines['top'].set_color('blue')
+    ax3.spines['right'].set_color('blue')
+    ax3.spines['left'].set_color('blue')
     ax3.set_aspect('equal', 'box')
 
     ax4 = fig.add_subplot(224)
     # ax4.set_facecolor(backcolor)
-    mask = torch.logical_and(x < mascon_slice_thickness,
-                             x > -mascon_slice_thickness)
-    ax4.scatter(z[mask], y[mask], color='k',
-                s=normalized_masses[mask], alpha=0.5)
-    plot_model_contours(model, encoding, section=np.array(
-        [1, 0, 0]), axes=ax4, levels=levels, c=c)
+    mask = torch.logical_and(x - offset < mascon_slice_thickness,
+                             x - offset > -mascon_slice_thickness)
+    _ = plot_model_contours(model, encoding, section=np.array(
+        [1, 0, 0]), axes=ax4, levels=levels, c=c, offset=offset, heatmap=heatmap)
+    ax4.scatter(z[mask], y[mask], color=mascon_color,
+                s=normalized_masses[mask], alpha=mascon_alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
-    ax4.axes.xaxis.set_ticklabels([])
-    ax4.axes.yaxis.set_ticklabels([])
-    ax4.set_xticks([])
-    ax4.set_yticks([])
+    ax4.set_xlabel("Y", fontsize=9)
+    ax4.set_ylabel("Z", fontsize=9)
+    ax4.set_title("Y-Z cross section (red slice)")
+    ax4.tick_params(labelsize=7, color="red")
+    ax4.spines['bottom'].set_color('red')
+    ax4.spines['top'].set_color('red')
+    ax4.spines['right'].set_color('red')
+    ax4.spines['left'].set_color('red')
     ax4.set_aspect('equal', 'box')
+
+    plt.tight_layout()
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
 
+    return fig
 
-def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., **plt_kwargs):
+
+def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", save_path=None, c=1.):
+    print("Sampling points at altitude")
+    points = get_target_point_sampler(50, method="altitude", bounds=[
+                                      0.05], limit_shape_to_asteroid=sample)()
+
+    print("Got ", len(points), " points.")
+    if plane == "XY":
+        cut_dim = 2
+        x_dim = 0
+        y_dim = 1
+    elif plane == "XZ":
+        cut_dim = 1
+        x_dim = 0
+        y_dim = 2
+    elif plane == "YZ":
+        cut_dim = 0
+        x_dim = 1
+        y_dim = 2
+
+    print("Splitting in left / right hemisphere")
+    points_left = points[points[:, cut_dim] < 0]
+    points_right = points[points[:, cut_dim] > 0]
+
+    print("Left: ", len(points_left), " points.")
+    print("Right: ", len(points_right), " points.")
+
+    model_values_left = torch.zeros([len(points_left), 3])
+    model_values_right = torch.zeros([len(points_right), 3])
+
+    label_values_left = torch.zeros([len(points_left), 3])
+    label_values_right = torch.zeros([len(points_right), 3])
+
+    model_values_left, label_values_left, relative_error_left = [], [], []
+    model_values_right, label_values_right, relative_error_right = [], [], []
+
+    for idx in tqdm(range(len(points_left))):
+        label_values_left.append(
+            ACC_L(points_left[idx], mascon_points, mascon_masses).detach())
+        model_values_left.append(
+            (ACC_trap(points_left[idx], model, encoding, N=30000)*c).detach())
+
+        torch.cuda.empty_cache()
+
+    for idx in tqdm(range(len(points_right))):
+        label_values_right.append(
+            ACC_L(points_right[idx], mascon_points, mascon_masses).detach())
+        model_values_right.append(
+            (ACC_trap(points_right[idx], model, encoding, N=30000)*c).detach())
+
+        torch.cuda.empty_cache()
+
+    label_values_left = torch.cat(label_values_left)
+    model_values_left = torch.cat(model_values_left)
+    label_values_right = torch.cat(label_values_right)
+    model_values_right = torch.cat(model_values_right)
+
+    print(model_values_left.shape)
+    print((torch.norm(model_values_left - label_values_left,
+                      dim=1)).shape)
+
+    relative_error_left = (torch.norm(model_values_left - label_values_left,
+                                      dim=1) / torch.norm(label_values_left+1e-8, dim=1)).cpu().numpy()
+    relative_error_right = (torch.norm(model_values_right - label_values_right,
+                                       dim=1) / torch.norm(label_values_right+1e-8, dim=1)).cpu().numpy()
+
+    X_left = points_left[:, x_dim]
+    Y_left = points_left[:, y_dim]
+
+    X_right = points_right[:, x_dim]
+    Y_right = points_right[:, y_dim]
+
+    print(relative_error_left.shape)
+    print(X_left.shape)
+    print(Y_left.shape)
+    print(relative_error_right.shape)
+    print(X_right.shape)
+    print(Y_right.shape)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(211)
+
+    p = ax.tricontourf(X_left.cpu().numpy(), Y_left.cpu().numpy(),
+                       relative_error_left, cmap="YlOrRd")
+    cb = plt.colorbar(p, ax=ax)
+    cb.set_label('Relative Density', rotation=270, labelpad=15)
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_xlabel(plane[0], fontsize=9)
+    ax.set_ylabel(plane[1], fontsize=9)
+    ax.set_title(plane + " cross section")
+    ax.tick_params(labelsize=7)
+    ax.set_aspect('equal', 'box')
+
+    fig = plt.figure()
+    ax = fig.add_subplot(212)
+
+    p = ax.tricontourf(X_right.cpu().numpy(), Y_right.cpu().numpy(),
+                       relative_error_right, cmap="YlOrRd")
+    cb = plt.colorbar(p, ax=ax)
+    cb.set_label('Relative Density', rotation=270, labelpad=15)
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_xlabel(plane[0], fontsize=9)
+    ax.set_ylabel(plane[1], fontsize=9)
+    ax.set_title(plane + " cross section")
+    ax.tick_params(labelsize=7)
+    ax.set_aspect('equal', 'box')
+
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+
+    if axes is None:
+        return fig
+
+
+def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]):
     """Takes a mass density model and plots the density contours of its section with
        a 2D plane
 
@@ -638,7 +796,7 @@ def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, sav
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         offset (float): an offset to apply to the plane in the direction of the section normal
         axes (matplolib axes): the axes where to plot. Defaults to None, in which case axes are created.
-
+        levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
     """
     # Builds a 2D grid on the z = 0 plane
     x, y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
@@ -680,7 +838,19 @@ def plot_model_contours(model, encoding, section=np.array([0, 0, 1]), N=100, sav
         ax = fig.add_subplot(111)
     else:
         ax = axes
-    ax.contour(X, Y, Z, **plt_kwargs)
+
+    if heatmap:
+        p = ax.contourf(X, Y, Z, cmap="Greys", levels=levels)
+        cb = plt.colorbar(p, ax=ax)
+    else:
+        cmap = mpl.cm.viridis
+        p = ax.contour(X, Y, Z, cmap=cmap, levels=levels)
+        norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+        cb = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
+    cb.set_label('Relative Density', rotation=270, labelpad=15)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
+
+    if axes is None:
+        return fig

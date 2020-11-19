@@ -1,6 +1,6 @@
 from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
-from ._integration import ACC_trap
+from ._integration import ACC_trap, ACC_ld
 from ._mascon_labels import ACC_L
 
 from matplotlib import pyplot as plt
@@ -565,7 +565,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(figsize=(10, 8), dpi=150)
+    fig = plt.figure(figsize=(10, 8), dpi=150, facecolor='white')
     ax = fig.add_subplot(221, projection='3d')
     # ax.set_facecolor(backcolor)
     col = 'cornflowerblue'
@@ -667,24 +667,29 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     return fig
 
 
-def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", save_path=None, c=1.):
+def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", altitude=0.1, save_path=None, c=1., N=5000):
     print("Sampling points at altitude")
-    points = get_target_point_sampler(50, method="altitude", bounds=[
-                                      0.05], limit_shape_to_asteroid=sample)()
+    points = get_target_point_sampler(N, method="altitude", bounds=[
+                                      altitude], limit_shape_to_asteroid=sample, replace=False)()
 
     print("Got ", len(points), " points.")
     if plane == "XY":
         cut_dim = 2
+        cut_dim_name = "z"
         x_dim = 0
         y_dim = 1
     elif plane == "XZ":
         cut_dim = 1
+        cut_dim_name = "y"
         x_dim = 0
         y_dim = 2
     elif plane == "YZ":
         cut_dim = 0
+        cut_dim_name = "x"
         x_dim = 1
         y_dim = 2
+    else:
+        raise ValueError("Plane has to be either XY, XZ or YZ")
 
     print("Splitting in left / right hemisphere")
     points_left = points[points[:, cut_dim] < 0]
@@ -704,17 +709,17 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
 
     for idx in tqdm(range(len(points_left))):
         label_values_left.append(
-            ACC_L(points_left[idx], mascon_points, mascon_masses).detach())
+            ACC_L([points_left[idx]], mascon_points, mascon_masses).detach())
         model_values_left.append(
-            (ACC_trap(points_left[idx], model, encoding, N=30000)*c).detach())
+            (ACC_ld([points_left[idx]], model, encoding, N=100000)*c).detach())
 
         torch.cuda.empty_cache()
 
     for idx in tqdm(range(len(points_right))):
         label_values_right.append(
-            ACC_L(points_right[idx], mascon_points, mascon_masses).detach())
+            ACC_L([points_right[idx]], mascon_points, mascon_masses).detach())
         model_values_right.append(
-            (ACC_trap(points_right[idx], model, encoding, N=30000)*c).detach())
+            (ACC_ld([points_right[idx]], model, encoding, N=100000)*c).detach())
 
         torch.cuda.empty_cache()
 
@@ -723,14 +728,10 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     label_values_right = torch.cat(label_values_right)
     model_values_right = torch.cat(model_values_right)
 
-    print(model_values_left.shape)
-    print((torch.norm(model_values_left - label_values_left,
-                      dim=1)).shape)
-
-    relative_error_left = (torch.norm(model_values_left - label_values_left,
-                                      dim=1) / torch.norm(label_values_left+1e-8, dim=1)).cpu().numpy()
-    relative_error_right = (torch.norm(model_values_right - label_values_right,
-                                       dim=1) / torch.norm(label_values_right+1e-8, dim=1)).cpu().numpy()
+    relative_error_left = (torch.sum(torch.abs(model_values_left - label_values_left), dim=1) /
+                           torch.sum(torch.abs(label_values_left+1e-8), dim=1)).cpu().numpy()
+    relative_error_right = (torch.sum(torch.abs(model_values_right - label_values_right), dim=1) /
+                            torch.sum(torch.abs(label_values_right+1e-8), dim=1)).cpu().numpy()
 
     X_left = points_left[:, x_dim]
     Y_left = points_left[:, y_dim]
@@ -738,50 +739,52 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     X_right = points_right[:, x_dim]
     Y_right = points_right[:, y_dim]
 
-    print(relative_error_left.shape)
-    print(X_left.shape)
-    print(Y_left.shape)
-    print(relative_error_right.shape)
-    print(X_right.shape)
-    print(Y_right.shape)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(211)
+    fig = plt.figure(figsize=(10, 5), dpi=150, facecolor='white')
+    fig.suptitle("Relative acceleration error in " + plane + " cross section")
+    ax = fig.add_subplot(121)
 
     p = ax.tricontourf(X_left.cpu().numpy(), Y_left.cpu().numpy(),
                        relative_error_left, cmap="YlOrRd")
     cb = plt.colorbar(p, ax=ax)
-    cb.set_label('Relative Density', rotation=270, labelpad=15)
+    cb.set_label('Relative Error', rotation=270, labelpad=15)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_xlabel(plane[0], fontsize=9)
     ax.set_ylabel(plane[1], fontsize=9)
-    ax.set_title(plane + " cross section")
+    ax.set_title(cut_dim_name + " < 0")
     ax.tick_params(labelsize=7)
     ax.set_aspect('equal', 'box')
+    ax.annotate("Label Acc. Mag=" + str(torch.mean(torch.sum(torch.abs(label_values_left), dim=1)).cpu().numpy()) +
+                "\n" + "Model Acc. Mag=" +
+                str(torch.mean(
+                    torch.sum(torch.abs(model_values_left), dim=1)).cpu().numpy()),
+                (-0.95, 0.8), fontsize=8)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(212)
+    ax = fig.add_subplot(122)
 
     p = ax.tricontourf(X_right.cpu().numpy(), Y_right.cpu().numpy(),
                        relative_error_right, cmap="YlOrRd")
     cb = plt.colorbar(p, ax=ax)
-    cb.set_label('Relative Density', rotation=270, labelpad=15)
+    cb.set_label('Relative Error', rotation=270, labelpad=15)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_xlabel(plane[0], fontsize=9)
     ax.set_ylabel(plane[1], fontsize=9)
-    ax.set_title(plane + " cross section")
+    ax.set_title(cut_dim_name + " > 0")
     ax.tick_params(labelsize=7)
     ax.set_aspect('equal', 'box')
+    ax.annotate("Label Acc. Mag=" + str(torch.mean(torch.sum(torch.abs(label_values_right), dim=1)).cpu().numpy()) +
+                "\n" + "Model Acc. Mag=" +
+                str(torch.mean(
+                    torch.sum(torch.abs(model_values_right), dim=1)).cpu().numpy()),
+                (-0.95, 0.8), fontsize=8)
 
     plt.tight_layout()
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
 
-    if axes is None:
-        return fig
+    return fig, label_values_right
 
 
 def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]):

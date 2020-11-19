@@ -12,7 +12,7 @@ from ._hulls import is_outside_torch, is_outside
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 
 
-def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None):
+def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, replace=True):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 
@@ -42,13 +42,13 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
     # Create domain limiter if passed
     else:
         if method == "altitude":
-            return _get_altitude_sampler(N, bounds[0], limit_shape_to_asteroid)
+            return _get_altitude_sampler(N, bounds[0], limit_shape_to_asteroid, replace=replace)
         else:
             return _get_asteroid_limited_sampler(
                 N, method, bounds, limit_shape_to_asteroid)
 
 
-def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True):
+def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True, replace=True):
     """This creates a sampler that samples from the triangle centers of the passed mesh + their normal
 
     Args:
@@ -100,7 +100,7 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         # print("Now len=", len(points_at_altitude))
 
     return lambda: torch.tensor(points_at_altitude[np.random.choice(
-        points_at_altitude.shape[0], N, replace=False), :])
+        points_at_altitude.shape[0], N, replace=replace), :])
 
 
 def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, sample_step_size=32):

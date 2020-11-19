@@ -7,7 +7,6 @@ from ._mascon_labels import ACC_L, U_L
 from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
-
 def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
     """Computes the current c constant for a model.
 

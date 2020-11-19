@@ -69,6 +69,7 @@ ENCODINGS = [                           # Encodings to test
 
 # Add visual loss term to force rho->0 outside
 USE_VISUAL_LOSS = False
+
 LIMIT_INTEGRATION_DOMAIN = False         # Sample integration points in asteroid
 
 USE_ACC = True                         # Use acceleration instead of U
@@ -302,6 +303,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
            "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
            "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method,
            "Integration Points": N_INTEGR_POINTS, "Vision Loss": USE_VISUAL_LOSS, "c": c}
+
     with open(run_folder+'config.pk', 'wb') as handle:
         pk.dump(cfg, handle)
 

@@ -96,8 +96,8 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
     eps = 1e-4  # maximum altitude error
     kd_tree = KDTree(centers)
     distances, _ = kd_tree.query(points_at_altitude, k=1)
-    is_too_close = np.abs(altitude-distances) > eps
-    warnings.warn("Discarding " + str(np.sum(is_too_close)) + " of " + str(len(is_too_close)) +
+    is_too_close = np.abs(altitude-distances) < eps
+    warnings.warn("Discarding " + str(len(is_too_close) - np.sum(is_too_close)) + " of " + str(len(is_too_close)) +
                   " points in altitude sampler due to too small altitude.")
     points_at_altitude = points_at_altitude[is_too_close]
 

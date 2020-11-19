@@ -47,7 +47,7 @@ def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
         p.close()
 
 
-def plot_points(points):
+def plot_points(points, elev=45, azim=125):
     """Creates a 3D scatter plot of passed points.
 
     Args:
@@ -55,9 +55,16 @@ def plot_points(points):
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(elev=elev, azim=azim)
     ax.scatter(points[:, 0].cpu().numpy(),
                points[:, 1].cpu().numpy(),
                points[:, 2].cpu().numpy())
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 1])
 
 
 def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
@@ -667,7 +674,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     return fig
 
 
-def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", altitude=0.1, save_path=None, c=1., N=5000):
+def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", altitude=0.1, save_path=None, c=1., N=5000, logscale=False):
     print("Sampling points at altitude")
     points = get_target_point_sampler(N, method="altitude", bounds=[
                                       altitude], limit_shape_to_asteroid=sample, replace=False)()
@@ -707,19 +714,26 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     model_values_left, label_values_left, relative_error_left = [], [], []
     model_values_right, label_values_right, relative_error_right = [], [], []
 
-    for idx in tqdm(range(len(points_left))):
+    batch_size = 100
+    for idx in range((len(points_left) // batch_size)+1):
+        indices = list(range(idx*batch_size,
+                             np.minimum((idx+1)*batch_size, len(points_left))))
+
         label_values_left.append(
-            ACC_L([points_left[idx]], mascon_points, mascon_masses).detach())
+            ACC_L(points_left[indices], mascon_points, mascon_masses).detach())
         model_values_left.append(
-            (ACC_ld([points_left[idx]], model, encoding, N=100000)*c).detach())
+            (ACC_ld(points_left[indices], model, encoding, N=100000)*c).detach())
 
         torch.cuda.empty_cache()
 
-    for idx in tqdm(range(len(points_right))):
+    for idx in range((len(points_right) // batch_size)+1):
+        indices = list(range(idx*batch_size,
+                             np.minimum((idx+1)*batch_size, len(points_right))))
+
         label_values_right.append(
-            ACC_L([points_right[idx]], mascon_points, mascon_masses).detach())
+            ACC_L(points_right[indices], mascon_points, mascon_masses).detach())
         model_values_right.append(
-            (ACC_ld([points_right[idx]], model, encoding, N=100000)*c).detach())
+            (ACC_ld(points_right[indices], model, encoding, N=100000)*c).detach())
 
         torch.cuda.empty_cache()
 
@@ -733,20 +747,27 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     relative_error_right = (torch.sum(torch.abs(model_values_right - label_values_right), dim=1) /
                             torch.sum(torch.abs(label_values_right+1e-8), dim=1)).cpu().numpy()
 
-    X_left = points_left[:, x_dim]
-    Y_left = points_left[:, y_dim]
+    if logscale:
+        relative_error_left = np.log(relative_error_left)
+        relative_error_right = np.log(relative_error_right)
 
-    X_right = points_right[:, x_dim]
-    Y_right = points_right[:, y_dim]
+    X_left = points_left[:, x_dim].cpu().numpy()
+    Y_left = points_left[:, y_dim].cpu().numpy()
+
+    X_right = points_right[:, x_dim].cpu().numpy()
+    Y_right = points_right[:, y_dim].cpu().numpy()
 
     fig = plt.figure(figsize=(10, 5), dpi=150, facecolor='white')
     fig.suptitle("Relative acceleration error in " + plane + " cross section")
-    ax = fig.add_subplot(121)
+    ax = fig.add_subplot(121, facecolor="black")
 
-    p = ax.tricontourf(X_left.cpu().numpy(), Y_left.cpu().numpy(),
-                       relative_error_left, cmap="YlOrRd")
+    p = ax.scatter(X_left, Y_left, c=relative_error_left,
+                   cmap="plasma", alpha=1.0, s=int(N * 0.0005))
     cb = plt.colorbar(p, ax=ax)
-    cb.set_label('Relative Error', rotation=270, labelpad=15)
+    if logscale:
+        cb.set_label('Log(Relative Error)', rotation=270, labelpad=15)
+    else:
+        cb.set_label('Relative Error', rotation=270, labelpad=15)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_xlabel(plane[0], fontsize=9)
@@ -758,14 +779,17 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
                 "\n" + "Model Acc. Mag=" +
                 str(torch.mean(
                     torch.sum(torch.abs(model_values_left), dim=1)).cpu().numpy()),
-                (-0.95, 0.8), fontsize=8)
+                (-0.95, 0.8), fontsize=8, color="white")
 
-    ax = fig.add_subplot(122)
+    ax = fig.add_subplot(122, facecolor="black")
 
-    p = ax.tricontourf(X_right.cpu().numpy(), Y_right.cpu().numpy(),
-                       relative_error_right, cmap="YlOrRd")
+    p = ax.scatter(X_right, Y_right, c=relative_error_right,
+                   cmap="plasma", alpha=1.0, s=int(N * 0.0005))
     cb = plt.colorbar(p, ax=ax)
-    cb.set_label('Relative Error', rotation=270, labelpad=15)
+    if logscale:
+        cb.set_label('Log(Relative Error)', rotation=270, labelpad=15)
+    else:
+        cb.set_label('Relative Error', rotation=270, labelpad=15)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_xlabel(plane[0], fontsize=9)
@@ -777,7 +801,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
                 "\n" + "Model Acc. Mag=" +
                 str(torch.mean(
                     torch.sum(torch.abs(model_values_right), dim=1)).cpu().numpy()),
-                (-0.95, 0.8), fontsize=8)
+                (-0.95, 0.8), fontsize=8, color="white")
 
     plt.tight_layout()
 

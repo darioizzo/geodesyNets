@@ -26,6 +26,8 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
                                 call). Defaults to "cubical".
         limit_shape_to_asteroid(str, optional): Path to a *.pk file specifies an asteroid shape to exclude from samples
                                                 or use for altitude sampling
+        replace (bool, optional): Only altitude. If points are allowed to be sampled twice in the same batch or not 
+                                  (for false maximum sample points = #triangles in mesh)
 
     Returns:
         lambda: function to call to get sampled target points
@@ -59,6 +61,8 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         limit_shape_to_asteroid (str): path of to asteroid mesh
         plot_normals (bool, optional): Display normals and created points for debugging. Defaults to False.
         discard_points_inside (bool, optional): Will discard all points that lie inside the asteroid (can happen for nonconvex ones). Defaults to True.
+        replace (bool, optional): If points are allowed to be sampled twice in the same batch or not 
+                                  (for false maximum sample points = #triangles in mesh)
 
     Returns:
         func: sampler function

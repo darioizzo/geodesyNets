@@ -1,6 +1,6 @@
 from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
-from ._integration import ACC_trap, ACC_ld
+from ._integration import ACC_ld
 from ._mascon_labels import ACC_L
 
 from matplotlib import pyplot as plt
@@ -52,6 +52,8 @@ def plot_points(points, elev=45, azim=125):
 
     Args:
         points (torch tensor): Points to plot.
+        elev (float): elevation of the 3D view
+        azim (float): azimuth for the 3D view
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -143,7 +145,7 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views
         normalized_masses = masses / sum(masses)
         normalized_masses = (normalized_masses * s * len(x)).cpu()
 
-# And we plot it
+    # And we plot it
     fig = plt.figure()
     if views_2d:
         ax = fig.add_subplot(221, projection='3d')
@@ -151,7 +153,7 @@ def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views
         ax = fig.add_subplot(111, projection='3d')
 
     # And visualize the masses
-    ax.scatter(x, y, z, colomascon_color, s=normalized_masses, alpha=alpha)
+    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -528,6 +530,8 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         progressbar (bool, optional): activates a progressbar. Defaults to False.
         levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
         offset (float): an offset to apply to the plane in the direction of the section normal
+        heatmap (bool): determines if contour lines or heatmap are displayed
+        mascon_alpha (float): alpha of the overlaid mascon model. Defaults to 0.5.
     """
 
     # Mascon masses
@@ -675,6 +679,27 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
 
 
 def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", altitude=0.1, save_path=None, c=1., N=5000, logscale=False):
+    """Plots the relative error of the computed acceleration between mascon model and neural network
+
+    Args:
+        sample (str): Path to sample mesh
+        model (callable (N,M)->1): neural model for the asteroid.
+        encoding: the encoding for the neural inputs.
+        mascon_points (2-D array-like): an (N, 3) array-like object containing the coordinates of the mascon points.
+        mascon_masses (1-D array-like): a (N,) array-like object containing the values for the mascon masses.
+        plane (str, optional): Either "XY","XZ" or "YZ". Defines  cross section. Defaults to "XY".
+        altitude (float, optional): Altitude to compute error at. Defaults to 0.1.
+        save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+        c (float, optional): Normalization constant. Defaults to 1.
+        N (int, optional): Number of points to sample. Defaults to 5000.
+        logscale (bool, optional): Logscale errors. Defaults to False.
+
+    Raises:
+        ValueError: On wrong input
+
+    Returns:
+        plt.Figure: created plot
+    """
     print("Sampling points at altitude")
     points = get_target_point_sampler(N, method="altitude", bounds=[
                                       altitude], limit_shape_to_asteroid=sample, replace=False)()
@@ -698,6 +723,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     else:
         raise ValueError("Plane has to be either XY, XZ or YZ")
 
+    # Left and Right refer to values < 0 and > 0 in the non-crosssection dimension
+
     print("Splitting in left / right hemisphere")
     points_left = points[points[:, cut_dim] < 0]
     points_right = points[points[:, cut_dim] > 0]
@@ -714,6 +741,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     model_values_left, label_values_left, relative_error_left = [], [], []
     model_values_right, label_values_right, relative_error_right = [], [], []
 
+    # Compute accelerations in left points, then right points
+    # for both network and mascon model
     batch_size = 100
     for idx in range((len(points_left) // batch_size)+1):
         indices = list(range(idx*batch_size,
@@ -722,7 +751,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         label_values_left.append(
             ACC_L(points_left[indices], mascon_points, mascon_masses).detach())
         model_values_left.append(
-            (ACC_ld(points_left[indices], model, encoding, N=100000)*c).detach())
+            (ACC_ld(points_left[indices], model, encoding, N=300000)*c).detach())
 
         torch.cuda.empty_cache()
 
@@ -733,15 +762,17 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         label_values_right.append(
             ACC_L(points_right[indices], mascon_points, mascon_masses).detach())
         model_values_right.append(
-            (ACC_ld(points_right[indices], model, encoding, N=100000)*c).detach())
+            (ACC_ld(points_right[indices], model, encoding, N=300000)*c).detach())
 
         torch.cuda.empty_cache()
 
+    # Accumulate all results
     label_values_left = torch.cat(label_values_left)
     model_values_left = torch.cat(model_values_left)
     label_values_right = torch.cat(label_values_right)
     model_values_right = torch.cat(model_values_right)
 
+    # Compute relative errors for each hemisphere (left, right)
     relative_error_left = (torch.sum(torch.abs(model_values_left - label_values_left), dim=1) /
                            torch.sum(torch.abs(label_values_left+1e-8), dim=1)).cpu().numpy()
     relative_error_right = (torch.sum(torch.abs(model_values_right - label_values_right), dim=1) /
@@ -751,12 +782,14 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         relative_error_left = np.log(relative_error_left)
         relative_error_right = np.log(relative_error_right)
 
+    # Get X,Y coordinates of analyzed points
     X_left = points_left[:, x_dim].cpu().numpy()
     Y_left = points_left[:, y_dim].cpu().numpy()
 
     X_right = points_right[:, x_dim].cpu().numpy()
     Y_right = points_right[:, y_dim].cpu().numpy()
 
+    # Plot left side stuff
     fig = plt.figure(figsize=(10, 5), dpi=150, facecolor='white')
     fig.suptitle("Relative acceleration error in " + plane + " cross section")
     ax = fig.add_subplot(121, facecolor="black")
@@ -781,6 +814,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
                     torch.sum(torch.abs(model_values_left), dim=1)).cpu().numpy()),
                 (-0.95, 0.8), fontsize=8, color="white")
 
+    # Plot right side stuff
     ax = fig.add_subplot(122, facecolor="black")
 
     p = ax.scatter(X_right, Y_right, c=relative_error_right,

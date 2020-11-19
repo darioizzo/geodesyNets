@@ -3,6 +3,7 @@ import numpy as np
 import os
 import warnings
 import gc
+import pickle as pk
 
 
 def print_torch_mem_footprint():
@@ -14,6 +15,24 @@ def print_torch_mem_footprint():
                 print(type(obj), obj.size())
         except:
             pass
+
+
+def get_asteroid_bounding_box(asteroid_pk_path):
+    """Computes a rectangular cuboid bounding box for the mesh of the sample.
+
+    Args:
+        asteroid_pk_path (str): Path to mesh of target asteroid
+
+    Returns:
+        np.array: domain as [min,max]^3
+    """
+    with open(asteroid_pk_path, "rb") as file:
+        mesh_vertices, _ = pk.load(file)
+    box = [np.min(mesh_vertices[:, 0]), np.max(mesh_vertices[:, 0]),
+           np.min(mesh_vertices[:, 1]), np.max(mesh_vertices[:, 1]),
+           np.min(mesh_vertices[:, 2]), np.max(mesh_vertices[:, 2])]
+
+    return box
 
 
 def unpack_triangle_mesh(mesh_vertices, mesh_triangles):

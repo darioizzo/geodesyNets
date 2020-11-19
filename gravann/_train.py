@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from ._losses import contrastive_loss
+from ._losses import contrastive_loss, zero_L1_loss
 
 from .external._siren import Siren
 from .networks._nerf import NERF
@@ -64,7 +64,7 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="d
                      hidden_layers=9, outermost_linear=True)
 
 
-def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, scheduler, integrator, N):
+def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, scheduler, integrator, N, vision_targets=None, integration_domain=None):
     """Trains the passed model on the passed batch
 
     Args:
@@ -77,17 +77,27 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
         scheduler (torch LR scheduler): torch LR scheduler to use
         integrator (func): integration function to call for the training loss
         N (int): Number of integration points to use for training
+        vision_targets (torch.tensor): If not None will eval L1 loss assuming that density at this points should be 0
+        integration_domain (torch.tensor): Domain to pick integration points in, only works with trapezoid for now
 
     Returns:
         torch tensor: losses
     """
     # Compute the loss (use N=3000 to start with, then, eventually, beef it up to 200000)
-    predicted = integrator(targets, model, encoding, N=N)
+    predicted = integrator(targets, model, encoding,
+                           N=N, domain=integration_domain)
     c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
     if loss_fn == contrastive_loss:
         loss = loss_fn(predicted, labels)
     else:
         loss = loss_fn(predicted.view(-1), labels.view(-1))
+
+    # Urge points outside asteroid to have 0 density.
+    vision_loss = torch.tensor([0])
+    if vision_targets is not None:
+        encoded_vision_targets = encoding(vision_targets)
+        predictions_at_visiont_targets = model(encoded_vision_targets)
+        vision_loss = zero_L1_loss(predictions_at_visiont_targets)
 
     # Before the backward pass, use the optimizer object to zero all of the
     # gradients for the variables it will update (which are the learnable
@@ -100,6 +110,9 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     # parameters
     loss.backward()
 
+    if vision_targets is not None:
+        vision_loss.backward()
+
     # Calling the step function on an Optimizer makes an update to its
     # parameters
     optimizer.step()
@@ -107,4 +120,4 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     # Perform a step in LR scheduler to update LR
     scheduler.step(loss.item())
 
-    return loss, c
+    return loss, c, vision_loss

@@ -1,6 +1,19 @@
 import torch
 
 
+def zero_L1_loss(predicted):
+    """Computes L1 Loss assuming all targets are zero. Used to incorporate visual information of the asteroid and force network to 0 density outside
+    asteroid.
+
+    Args:
+        predicted (torch.tensor): density predictions of the network
+
+    Returns:
+        [torch.tensor]: elementwise L1 loss compared to zero target
+    """
+    return torch.nn.L1Loss()(predicted, torch.zeros(predicted.shape))
+
+
 def _angular_difference(predicted_T1, predicted_T2, labels_T1, labels_T2):
     """Computes the angles between T1 and T2 and then angular differences between predictions and labels
 

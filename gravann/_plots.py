@@ -576,7 +576,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(figsize=(10, 8), dpi=150, facecolor='white')
+    levels = np.asarray(levels) / 0.7 * \
+        np.max(rho.cpu().detach().numpy())  # normalize scale
+
+    fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
     ax = fig.add_subplot(221, projection='3d')
     # ax.set_facecolor(backcolor)
     col = 'cornflowerblue'
@@ -604,7 +607,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     # Z Rectangle
     ax.plot_wireframe(np.asarray([[-1, 1], [-1, 1]]), np.asarray([[1, 1], [-1, -1]]),
                       np.asarray([[0, 0], [0, 0]])+offset, color="green", linestyle="--", alpha=0.75)
-    ax.set_title("3D View")
+    ax.set_title("3D View", fontsize=7)
 
     mascon_slice_thickness = 0.05
 
@@ -626,7 +629,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.spines['top'].set_color('green')
     ax2.spines['right'].set_color('green')
     ax2.spines['left'].set_color('green')
-    ax2.set_title("X-Y cross section (green slice)")
+    ax2.set_title("X-Y cross section (green slice)", fontsize=7)
     ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(223)
@@ -642,7 +645,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.set_ylim([-1, 1])
     ax3.set_xlabel("X", fontsize=9)
     ax3.set_ylabel("Z", fontsize=9)
-    ax3.set_title("X-Z cross section (blue slice)")
+    ax3.set_title("X-Z cross section (blue slice)", fontsize=7)
     ax3.tick_params(labelsize=7, color="blue")
     ax3.spines['bottom'].set_color('blue')
     ax3.spines['top'].set_color('blue')
@@ -662,7 +665,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax4.set_ylim([-1, 1])
     ax4.set_xlabel("Y", fontsize=9)
     ax4.set_ylabel("Z", fontsize=9)
-    ax4.set_title("Y-Z cross section (red slice)")
+    ax4.set_title("Y-Z cross section (red slice)", fontsize=7)
     ax4.tick_params(labelsize=7, color="red")
     ax4.spines['bottom'].set_color('red')
     ax4.spines['top'].set_color('red')
@@ -751,7 +754,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         label_values_left.append(
             ACC_L(points_left[indices], mascon_points, mascon_masses).detach())
         model_values_left.append(
-            (ACC_ld(points_left[indices], model, encoding, N=300000)*c).detach())
+            (ACC_ld(points_left[indices], model, encoding, N=200000)*c).detach())
 
         torch.cuda.empty_cache()
 
@@ -762,7 +765,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         label_values_right.append(
             ACC_L(points_right[indices], mascon_points, mascon_masses).detach())
         model_values_right.append(
-            (ACC_ld(points_right[indices], model, encoding, N=300000)*c).detach())
+            (ACC_ld(points_right[indices], model, encoding, N=200000)*c).detach())
 
         torch.cuda.empty_cache()
 
@@ -790,13 +793,16 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     Y_right = points_right[:, y_dim].cpu().numpy()
 
     # Plot left side stuff
-    fig = plt.figure(figsize=(10, 5), dpi=150, facecolor='white')
-    fig.suptitle("Relative acceleration error in " + plane + " cross section")
+    fig = plt.figure(figsize=(10, 4), dpi=100, facecolor='white')
+    fig.suptitle("Relative acceleration error in " +
+                 plane + " cross section", fontsize=12)
     ax = fig.add_subplot(121, facecolor="black")
 
     p = ax.scatter(X_left, Y_left, c=relative_error_left,
-                   cmap="plasma", alpha=1.0, s=int(N * 0.0005))
+                   cmap="plasma", alpha=1.0, s=int(N * 0.0005+0.5))
+
     cb = plt.colorbar(p, ax=ax)
+    cb.ax.tick_params(labelsize=7)
     if logscale:
         cb.set_label('Log(Relative Error)', rotation=270, labelpad=15)
     else:
@@ -818,8 +824,9 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     ax = fig.add_subplot(122, facecolor="black")
 
     p = ax.scatter(X_right, Y_right, c=relative_error_right,
-                   cmap="plasma", alpha=1.0, s=int(N * 0.0005))
+                   cmap="plasma", alpha=1.0, s=int(N * 0.0005+0.5))
     cb = plt.colorbar(p, ax=ax)
+    cb.ax.tick_params(labelsize=7)
     if logscale:
         cb.set_label('Log(Relative Error)', rotation=270, labelpad=15)
     else:
@@ -908,6 +915,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         p = ax.contour(X, Y, Z, cmap=cmap, levels=levels)
         norm = mpl.colors.BoundaryNorm(levels, cmap.N)
         cb = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
+        cb.ax.tick_params(labelsize=7)
     cb.set_label('Relative Density', rotation=270, labelpad=15)
 
     if save_path is not None:

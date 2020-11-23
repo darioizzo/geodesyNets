@@ -93,11 +93,11 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
         loss = loss_fn(predicted.view(-1), labels.view(-1))
 
     # Urge points outside asteroid to have 0 density.
-    vision_loss = torch.tensor([0])
     if vision_targets is not None:
         encoded_vision_targets = encoding(vision_targets)
-        predictions_at_visiont_targets = model(encoded_vision_targets)
-        vision_loss = zero_L1_loss(predictions_at_visiont_targets)
+        predictions_at_vision_targets = model(encoded_vision_targets)
+        vision_loss = torch.mean(zero_L1_loss(c*predictions_at_vision_targets))
+        loss += vision_loss
 
     # Before the backward pass, use the optimizer object to zero all of the
     # gradients for the variables it will update (which are the learnable
@@ -109,9 +109,6 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     # Backward pass: compute gradient of the loss with respect to model
     # parameters
     loss.backward()
-
-    if vision_targets is not None:
-        vision_loss.backward()
 
     # Calling the step function on an Optimizer makes an update to its
     # parameters

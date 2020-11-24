@@ -11,7 +11,7 @@ def zero_L1_loss(predicted):
     Returns:
         [torch.tensor]: elementwise L1 loss compared to zero target
     """
-    return torch.nn.L1Loss()(predicted, torch.zeros(predicted.shape))
+    return torch.abs(predicted.view(-1))
 
 
 def _angular_difference(predicted_T1, predicted_T2, labels_T1, labels_T2):

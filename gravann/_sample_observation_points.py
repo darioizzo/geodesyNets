@@ -14,7 +14,7 @@ from ._hulls import is_outside_torch, is_outside
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 
 
-def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None):
+def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, replace=True):
     """Get a function to sample N target points from. Points may differ each
     call depending on selected method. See specific implementations for details.
 
@@ -26,6 +26,8 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
                                 call). Defaults to "cubical".
         limit_shape_to_asteroid(str, optional): Path to a *.pk file specifies an asteroid shape to exclude from samples
                                                 or use for altitude sampling
+        replace (bool, optional): Only altitude. If points are allowed to be sampled twice in the same batch or not 
+                                  (for false maximum sample points = #triangles in mesh)
 
     Returns:
         lambda: function to call to get sampled target points
@@ -44,13 +46,13 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
     # Create domain limiter if passed
     else:
         if method == "altitude":
-            return _get_altitude_sampler(N, bounds[0], limit_shape_to_asteroid)
+            return _get_altitude_sampler(N, bounds[0], limit_shape_to_asteroid, replace=replace)
         else:
             return _get_asteroid_limited_sampler(
                 N, method, bounds, limit_shape_to_asteroid)
 
 
-def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True):
+def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True, replace=True):
     """This creates a sampler that samples from the triangle centers of the passed mesh + their normal
 
     Args:
@@ -59,6 +61,8 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         limit_shape_to_asteroid (str): path of to asteroid mesh
         plot_normals (bool, optional): Display normals and created points for debugging. Defaults to False.
         discard_points_inside (bool, optional): Will discard all points that lie inside the asteroid (can happen for nonconvex ones). Defaults to True.
+        replace (bool, optional): If points are allowed to be sampled twice in the same batch or not 
+                                  (for false maximum sample points = #triangles in mesh)
 
     Returns:
         func: sampler function
@@ -96,8 +100,8 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
     eps = 1e-4  # maximum altitude error
     kd_tree = KDTree(centers)
     distances, _ = kd_tree.query(points_at_altitude, k=1)
-    is_too_close = np.abs(altitude-distances) > eps
-    warnings.warn("Discarding " + str(np.sum(is_too_close)) + " of " + str(len(is_too_close)) +
+    is_too_close = np.abs(altitude-distances) < eps
+    warnings.warn("Discarding " + str(len(is_too_close) - np.sum(is_too_close)) + " of " + str(len(is_too_close)) +
                   " points in altitude sampler due to too small altitude.")
     points_at_altitude = points_at_altitude[is_too_close]
 
@@ -111,7 +115,7 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         # print("Now len=", len(points_at_altitude))
 
     return lambda: torch.tensor(points_at_altitude[np.random.choice(
-        points_at_altitude.shape[0], N, replace=False), :])
+        points_at_altitude.shape[0], N, replace=replace), :])
 
 
 def _get_asteroid_limited_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape_to_asteroid=None, sample_step_size=32):

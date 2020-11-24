@@ -5,3 +5,6 @@ Usage:
 
 with open("3dmeshes/Eros.pk", "rb") as f:
     points, triangles = pk.load(f)
+
+The files *_raw are direct exports from the original 3d model.
+The files *_lp contain a downsized model good for raytracing.

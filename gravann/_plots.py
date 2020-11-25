@@ -47,7 +47,7 @@ def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
         p.close()
 
 
-def plot_points(points, elev=45, azim=125):
+def plot_points(points, elev=45, azim=45):
     """Creates a 3D scatter plot of passed points.
 
     Args:
@@ -100,7 +100,7 @@ def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interact
     return mesh
 
 
-def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, elev=45, azim=125):
+def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, elev=45, azim=45):
     """Plots a mesh ()
 
     Args:
@@ -120,72 +120,91 @@ def plot_mesh(mesh, show_edges=True, smooth_shading=False, interactive=True, ele
     p.show()
 
 
-def plot_mascon(points, masses=None, elev=45, azim=125, alpha=0.1, s=None, views_2d=True, save_path=None):
+def plot_mascon(mascon_points, mascon_masses=None, elev=45, azim=45, alpha=0.01, s=None, views_2d=True, save_path=None):
     """Plots a mascon model
 
     Args:
-        points (2-D array-like): an (N, 3) array-like object containing the coordinates of the points
-        masses (1-D array-like): a (N,) array-like object containing the values for the point masses
+        mascon_points (2-D array-like): an (N, 3) array-like object containing the coordinates of the points
+        mascon_masses (1-D array-like): a (N,) array-like object containing the values for the point masses
         elev (float): elevation of the starting 3D view
         azim (float): azimuth for the starting 3D view
         alpha (float): alpha for the mass visualization
         s (int): scale for the visualized masses
 
     """
-    x = points[:, 0].cpu()
-    y = points[:, 1].cpu()
-    z = points[:, 2].cpu()
+    x = mascon_points[:, 0].cpu()
+    y = mascon_points[:, 1].cpu()
+    z = mascon_points[:, 2].cpu()
 
     if s is None:
-        s = 22000 / len(points)
-
-    if masses is None:
-        normalized_masses = s
-    else:
-        normalized_masses = masses / sum(masses)
-        normalized_masses = (normalized_masses * s * len(x)).cpu()
+        if mascon_masses is None:
+            s = 1./len(mascon_points)
+            s = s/max(s)*200
+        else:
+            s = mascon_masses.cpu() / sum(mascon_masses.cpu())
+            s = s/max(s)*200
 
     # And we plot it
-    fig = plt.figure()
+    fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
     if views_2d:
         ax = fig.add_subplot(221, projection='3d')
     else:
         ax = fig.add_subplot(111, projection='3d')
 
     # And visualize the masses
-    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=alpha)
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    ax.set_zlim([-1, 1])
+    D = 1.
+    ax.scatter(x, y, z, alpha=alpha, s=s, c='k')
     ax.view_init(elev=elev, azim=azim)
-    ax.axes.xaxis.set_ticklabels([])
-    ax.axes.yaxis.set_ticklabels([])
-    ax.axes.zaxis.set_ticklabels([])
+    ax.set_xlim([-D, D])
+    ax.set_ylim([-D, D])
+    ax.set_zlim([-D, D])
+    ax.set_axis_off()
+    # X Rectangle
+    ax.plot_wireframe(np.asarray([[0, 0], [0, 0]]), np.asarray([[D, D], [-D, -D]]),
+                      np.asarray([[-D, D], [-D, D]]), color="red", linestyle="--", alpha=0.75)
+    # Y Rectangle
+    ax.plot_wireframe(np.asarray([[D, D], [-D, -D]]), np.asarray([[0, 0], [0, 0]]),
+                      np.asarray([[-D, D], [-D, D]]), color="blue", linestyle="--", alpha=0.75)
+    # Z Rectangle
+    ax.plot_wireframe(np.asarray([[-D, D], [-D, D]]), np.asarray([[D, D], [-D, -D]]),
+                      np.asarray([[0, 0], [0, 0]]), color="green", linestyle="--", alpha=0.75)
 
     if views_2d:
         ax2 = fig.add_subplot(222)
-        ax2.scatter(x, y, color='k', s=normalized_masses, alpha=alpha)
+        ax2.scatter(x, y, color='k', s=s, alpha=alpha)
         ax2.set_xlim([-1, 1])
         ax2.set_ylim([-1, 1])
         ax2.set_xticks([])
         ax2.set_yticks([])
         ax2.set_aspect('equal', 'box')
+        ax2.spines['left'].set_color('green')
+        ax2.spines['right'].set_color('green')
+        ax2.spines['top'].set_color('green')
+        ax2.spines['bottom'].set_color('green')
 
         ax3 = fig.add_subplot(223)
-        ax3.scatter(x, z, color='k', s=normalized_masses, alpha=alpha)
+        ax3.scatter(x, z, color='k', s=s, alpha=alpha)
         ax3.set_xlim([-1, 1])
         ax3.set_ylim([-1, 1])
         ax3.set_xticks([])
         ax3.set_yticks([])
         ax3.set_aspect('equal', 'box')
+        ax3.spines['left'].set_color('blue')
+        ax3.spines['right'].set_color('blue')
+        ax3.spines['top'].set_color('blue')
+        ax3.spines['bottom'].set_color('blue')
 
         ax4 = fig.add_subplot(224)
-        ax4.scatter(z, y, color='k', s=normalized_masses, alpha=alpha)
+        ax4.scatter(y, z, color='k', s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
         ax4.set_xticks([])
         ax4.set_yticks([])
         ax4.set_aspect('equal', 'box')
+        ax4.spines['left'].set_color('red')
+        ax4.spines['right'].set_color('red')
+        ax4.spines['top'].set_color('red')
+        ax4.spines['bottom'].set_color('red')
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
@@ -235,7 +254,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
-    ax.view_init(elev=45., azim=125.)
+    ax.view_init(elev=45., azim=45.)
     ax.axes.xaxis.set_ticklabels([])
     ax.axes.yaxis.set_ticklabels([])
     ax.axes.zaxis.set_ticklabels([])
@@ -269,7 +288,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
         ax4.set_aspect('equal', 'box')
 
 
-def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=50, save_path=None, c=1., progressbar=False):
+def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=50, save_path=None, c=1., progressbar=False, elev=45., azim=45.):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
     as a probability distribution and performing a rejection sampling approach
 
@@ -285,6 +304,8 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         c (float, optional): Normalization constant. Defaults to 1.
         progressbar (bool optional): activates a progressbar. Defaults to False.
+        elev (float): elevation of the 3D view
+        azim (float): azimuth for the 3D view
     """
     torch.manual_seed(42)  # Seed torch to always get the same points
     points = []
@@ -314,7 +335,7 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
     if views_2d:
         ax = fig.add_subplot(221, projection='3d')
     else:
@@ -329,10 +350,18 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
-    ax.view_init(elev=45., azim=125.)
-    ax.axes.xaxis.set_ticklabels([])
-    ax.axes.yaxis.set_ticklabels([])
-    ax.axes.zaxis.set_ticklabels([])
+    ax.view_init(elev=elev, azim=azim)
+    ax.set_axis_off()
+
+    # X Rectangle
+    ax.plot_wireframe(np.asarray([[0, 0], [0, 0]]), np.asarray([[1, 1], [-1, -1]]),
+                      np.asarray([[-1, 1], [-1, 1]]), color="red", linestyle="--", alpha=0.75)
+    # Y Rectangle
+    ax.plot_wireframe(np.asarray([[1, 1], [-1, -1]]), np.asarray([[0, 0], [0, 0]]),
+                      np.asarray([[-1, 1], [-1, 1]]), color="blue", linestyle="--", alpha=0.75)
+    # Z Rectangle
+    ax.plot_wireframe(np.asarray([[-1, 1], [-1, 1]]), np.asarray([[1, 1], [-1, -1]]),
+                      np.asarray([[0, 0], [0, 0]]), color="green", linestyle="--", alpha=0.75)
 
     if views_2d:
         ax2 = fig.add_subplot(222)
@@ -343,6 +372,10 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax2.set_xticks([])
         ax2.set_yticks([])
         ax2.set_aspect('equal', 'box')
+        ax2.spines['bottom'].set_color('green')
+        ax2.spines['top'].set_color('green')
+        ax2.spines['right'].set_color('green')
+        ax2.spines['left'].set_color('green')
 
         ax3 = fig.add_subplot(223)
         ax3.scatter(points[:, 0].cpu(), points[:, 2].cpu(),
@@ -352,6 +385,10 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax3.set_xticks([])
         ax3.set_yticks([])
         ax3.set_aspect('equal', 'box')
+        ax3.spines['bottom'].set_color('blue')
+        ax3.spines['top'].set_color('blue')
+        ax3.spines['right'].set_color('blue')
+        ax3.spines['left'].set_color('blue')
 
         ax4 = fig.add_subplot(224)
         ax4.scatter(points[:, 2].cpu(), points[:, 1].cpu(),
@@ -361,6 +398,10 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax4.set_xticks([])
         ax4.set_yticks([])
         ax4.set_aspect('equal', 'box')
+        ax4.spines['bottom'].set_color('red')
+        ax4.spines['top'].set_color('red')
+        ax4.spines['right'].set_color('red')
+        ax4.spines['left'].set_color('red')
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
@@ -398,7 +439,7 @@ def plot_gradients_per_layer(model):
     plt.tight_layout()
 
 
-def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False):
+def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, elev=45., azim=45.):
     """Plots both the mascon and model rejection in one figure for direct comparison
     Args:
         model (callable (N,M)->1): neural model for the asteroid.
@@ -414,6 +455,8 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         c (float, optional): Normalization constant. Defaults to 1.
         progressbar (bool, optional): activates a progressbar. Defaults to False.
         backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
+        elev (float): elevation of the 3D view
+        azim (float): azimuth for the 3D view
     """
 
     # Mascon masses
@@ -469,10 +512,19 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
-    ax.view_init(elev=45., azim=125.)
+    ax.view_init(elev=elev, azim=azim)
     ax.axes.xaxis.set_ticklabels([])
     ax.axes.yaxis.set_ticklabels([])
     ax.axes.zaxis.set_ticklabels([])
+    # X Rectangle
+    ax.plot_wireframe(np.asarray([[0, 0], [0, 0]])+offset, np.asarray([[1, 1], [-1, -1]]),
+                      np.asarray([[-1, 1], [-1, 1]]), color="red", linestyle="--", alpha=0.75)
+    # Y Rectangle
+    ax.plot_wireframe(np.asarray([[1, 1], [-1, -1]]), np.asarray([[0, 0], [0, 0]])+offset,
+                      np.asarray([[-1, 1], [-1, 1]]), color="blue", linestyle="--", alpha=0.75)
+    # Z Rectangle
+    ax.plot_wireframe(np.asarray([[-1, 1], [-1, 1]]), np.asarray([[1, 1], [-1, -1]]),
+                      np.asarray([[0, 0], [0, 0]])+offset, color="green", linestyle="--", alpha=0.75)
 
     ax2 = fig.add_subplot(222)
     ax2.set_facecolor(backcolor)
@@ -582,7 +634,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
     ax = fig.add_subplot(221, projection='3d')
     # ax.set_facecolor(backcolor)
-    col = 'cornflowerblue'
+    col = 'blue'
     mascon_color = "green"
 
     # And we plot it
@@ -592,7 +644,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
-    ax.view_init(elev=45., azim=125.)
+    ax.view_init(elev=45., azim=45.)
     ax.tick_params(labelsize=7)
     ax.set_xlabel("X", fontsize=9)
     ax.set_ylabel("Y", fontsize=9)
@@ -678,7 +730,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
 
-    return fig
+    return ax
 
 
 def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", altitude=0.1, save_path=None, c=1., N=5000, logscale=False):
@@ -849,7 +901,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
 
-    return fig, label_values_right
+    return ax, label_values_right
 
 
 def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]):

@@ -391,7 +391,7 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax3.spines['left'].set_color('blue')
 
         ax4 = fig.add_subplot(224)
-        ax4.scatter(points[:, 2].cpu(), points[:, 1].cpu(),
+        ax4.scatter(points[:, 1].cpu(), points[:, 2].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
         ax4.set_ylim([-1, 1])
@@ -710,7 +710,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
                              x - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
         [1, 0, 0]), axes=ax4, levels=levels, c=c, offset=offset, heatmap=heatmap)
-    ax4.scatter(z[mask], y[mask], color=mascon_color,
+    ax4.scatter(y[mask], z[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
@@ -957,6 +957,10 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         ax = fig.add_subplot(111)
     else:
         ax = axes
+
+    # CAREFUL: ugly workaround to fix axis ...
+    if (section == np.array([1, 0, 0])).all():
+        X, Y = Y, X
 
     if heatmap:
         p = ax.contourf(X, Y, Z, cmap="Greys", levels=levels)

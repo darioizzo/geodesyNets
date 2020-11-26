@@ -6,6 +6,7 @@ from ._mascon_labels import ACC_L
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib.lines import Line2D
+import matplotlib.colors as colors
 import torch
 import math
 import numpy as np
@@ -517,14 +518,14 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     ax.axes.yaxis.set_ticklabels([])
     ax.axes.zaxis.set_ticklabels([])
     # X Rectangle
-    ax.plot_wireframe(np.asarray([[0, 0], [0, 0]])+offset, np.asarray([[1, 1], [-1, -1]]),
+    ax.plot_wireframe(np.asarray([[0, 0], [0, 0]]), np.asarray([[1, 1], [-1, -1]]),
                       np.asarray([[-1, 1], [-1, 1]]), color="red", linestyle="--", alpha=0.75)
     # Y Rectangle
-    ax.plot_wireframe(np.asarray([[1, 1], [-1, -1]]), np.asarray([[0, 0], [0, 0]])+offset,
+    ax.plot_wireframe(np.asarray([[1, 1], [-1, -1]]), np.asarray([[0, 0], [0, 0]]),
                       np.asarray([[-1, 1], [-1, 1]]), color="blue", linestyle="--", alpha=0.75)
     # Z Rectangle
     ax.plot_wireframe(np.asarray([[-1, 1], [-1, 1]]), np.asarray([[1, 1], [-1, -1]]),
-                      np.asarray([[0, 0], [0, 0]])+offset, color="green", linestyle="--", alpha=0.75)
+                      np.asarray([[0, 0], [0, 0]]), color="green", linestyle="--", alpha=0.75)
 
     ax2 = fig.add_subplot(222)
     ax2.set_facecolor(backcolor)
@@ -832,6 +833,13 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     relative_error_right = (torch.sum(torch.abs(model_values_right - label_values_right), dim=1) /
                             torch.sum(torch.abs(label_values_right+1e-8), dim=1)).cpu().numpy()
 
+    min_err = np.minimum(np.min(relative_error_left),
+                         np.min(relative_error_right))
+    max_err = np.maximum(np.max(relative_error_left),
+                         np.max(relative_error_right))
+
+    norm = colors.Normalize(vmin=min_err, vmax=max_err)
+
     if logscale:
         relative_error_left = np.log(relative_error_left)
         relative_error_right = np.log(relative_error_right)
@@ -850,7 +858,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     ax = fig.add_subplot(121, facecolor="black")
 
     p = ax.scatter(X_left, Y_left, c=relative_error_left,
-                   cmap="plasma", alpha=1.0, s=int(N * 0.0005+0.5))
+                   cmap="plasma", alpha=1.0, s=int(N * 0.0005+0.5), norm=norm)
 
     cb = plt.colorbar(p, ax=ax)
     cb.ax.tick_params(labelsize=7)
@@ -875,7 +883,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     ax = fig.add_subplot(122, facecolor="black")
 
     p = ax.scatter(X_right, Y_right, c=relative_error_right,
-                   cmap="plasma", alpha=1.0, s=int(N * 0.0005+0.5))
+                   cmap="plasma", alpha=1.0, s=int(N * 0.0005+0.5), norm=norm)
+
     cb = plt.colorbar(p, ax=ax)
     cb.ax.tick_params(labelsize=7)
     if logscale:

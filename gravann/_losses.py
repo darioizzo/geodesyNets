@@ -117,7 +117,7 @@ def normalized_sqrt_L1_loss(predicted, labels):
     """
     c = torch.sum(torch.mul(labels, predicted)) / \
         torch.sum(torch.pow(predicted, 2))
-    return torch.sum(torch.sqrt(torch.abs(torch.sub(labels, c*predicted)))) / len(labels)
+    return torch.sum(torch.sqrt(torch.abs(torch.sub(labels, c*predicted))+1e-8)) / len(labels)
 
 
 def mse_loss(predicted, labels):

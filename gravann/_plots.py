@@ -563,7 +563,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         plt.savefig(save_path, dpi=150)
 
 
-def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, alpha=0.075, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], offset=0.0, heatmap=False, mascon_alpha=0.5):
+def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, offset=0.0, heatmap=False, mascon_alpha=0.05):
     """Plots both the mascon and model contours in one figure for direct comparison
 
     Args:
@@ -573,17 +573,15 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         mascon_masses (1-D array-like): a (N,) array-like object containing the values for the mascon masses.
         N (int): number of points to be considered.
         views_2d (bool): activates also the 2d projections.
-        alpha (float): alpha for the visualization.
         crop_p (float): all points below this density are rejected.
         s (int): size of the non rejected points visualization.
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         c (float, optional): Normalization constant. Defaults to 1.
         backcolor (list, optional): Plot background color. Defaults to [0.15, 0.15, 0.15].
         progressbar (bool, optional): activates a progressbar. Defaults to False.
-        levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
         offset (float): an offset to apply to the plane in the direction of the section normal
         heatmap (bool): determines if contour lines or heatmap are displayed
-        mascon_alpha (float): alpha of the overlaid mascon model. Defaults to 0.5.
+        mascon_alpha (float): alpha of the overlaid mascon model. Defaults to 0.05.
     """
 
     # Mascon masses
@@ -628,19 +626,20 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    levels = np.asarray(levels) / 0.7 * \
+    levels = np.linspace(0., 1., 10)
+    levels = np.asarray(levels) * \
         np.max(rho.cpu().detach().numpy())  # normalize scale
 
     fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
     ax = fig.add_subplot(221, projection='3d')
     # ax.set_facecolor(backcolor)
-    col = 'blue'
+    rejection_col = 'yellow'
     mascon_color = "green"
 
     # And we plot it
-    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.5)
+    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.01)
     ax.scatter(points[:, 0].cpu(), points[:, 1].cpu(), points[:, 2].cpu(),
-               marker='.', c=col, s=s, alpha=alpha)
+               marker='.', c=rejection_col, s=s, alpha=0.05)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -950,7 +949,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
     # ... and compute them
     inp = encoding(torch.tensor(newp, dtype=torch.float32))
     rho = model(inp) * c
-    Z = rho.reshape((100, 100)).cpu().detach().numpy()
+    Z = rho.reshape((N, N)).cpu().detach().numpy()
 
     X, Y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
     if axes is None:
@@ -968,10 +967,10 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         norm = mpl.colors.BoundaryNorm(levels, cmap.N)
         cb = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
         cb.ax.tick_params(labelsize=7)
-    cb.set_label('Relative Density', rotation=270, labelpad=15)
+    cb.set_label('Density', rotation=270, labelpad=15)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=150)
 
     if axes is None:
-        return fig
+        return ax

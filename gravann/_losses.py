@@ -50,6 +50,29 @@ def _angular_difference(predicted_T1, predicted_T2, labels_T1, labels_T2):
     return torch.abs(pred_angles-label_angles)
 
 
+def normalized_relative_L1_loss(predicted, labels):
+    """Will compute a normalized L1 error relative to the abs value (i.e. L1 Norm) of the ground-truth acceleration
+
+    Args:
+        predicted (torch.tensor): model predictions
+        labels (torch.tensor): ground truth labels
+    Returns:
+        [torch.tensor]: mean relative normalized L1 loss
+    """
+    if predicted.shape[1] != 3:
+        raise ValueError(
+            "This loss is only available for acceleration-based models.")
+
+    acceleration_abs = torch.sum(torch.abs(labels), dim=1)
+
+    c = torch.sum(torch.mul(labels.view(-1), predicted.view(-1))) / \
+        torch.sum(torch.pow(predicted.view(-1), 2))
+
+    acceleration_err = torch.sum(torch.abs(labels - c*predicted), dim=1)
+
+    return torch.mean(acceleration_err / acceleration_abs)
+
+
 def contrastive_loss(predicted, labels):
     """ Will compute a normalized_loss and additionally a term that compares the error on the angular differences between two accelerations
 

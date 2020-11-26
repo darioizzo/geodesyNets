@@ -8,7 +8,7 @@ import os
 from ._encodings import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
 
 # Importing the losses
-from ._losses import normalized_loss, mse_loss, normalized_L1_loss, contrastive_loss, normalized_sqrt_L1_loss
+from ._losses import normalized_loss, mse_loss, normalized_L1_loss, contrastive_loss, normalized_sqrt_L1_loss, normalized_relative_L1_loss
 
 # Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
 from ._integration import ACC_ld, ACC_trap, U_mc, U_ld, U_trap_opt

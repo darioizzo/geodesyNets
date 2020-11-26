@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from ._losses import contrastive_loss, zero_L1_loss
+from ._losses import contrastive_loss, zero_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
 
 from .external._siren import Siren
 from .networks._nerf import NERF
@@ -87,12 +87,13 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     predicted = integrator(targets, model, encoding,
                            N=N, domain=integration_domain)
     c = torch.sum(predicted*labels)/torch.sum(predicted*predicted)
-    if loss_fn == contrastive_loss:
+    if loss_fn == contrastive_loss or loss_fn == normalized_relative_L2_loss or loss_fn == normalized_relative_component_loss:
         loss = loss_fn(predicted, labels)
     else:
         loss = loss_fn(predicted.view(-1), labels.view(-1))
 
     # Urge points outside asteroid to have 0 density.
+    vision_loss = torch.tensor([0.0])
     if vision_targets is not None:
         encoded_vision_targets = encoding(vision_targets)
         predictions_at_vision_targets = model(encoded_vision_targets)

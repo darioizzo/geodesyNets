@@ -22,18 +22,20 @@ from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection, plot_model_vs_mascon_contours
 
 
-EXPERIMENT_ID = "run_10_11_2020"
+EXPERIMENT_ID = "run_27_11_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 5000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    # "Eros.pk",
+    "Eros.pk",
     "Churyumov-Gerasimenko.pk",
-    # "Itokawa_non_uniform.pk",
-    # "Bennu_lp.pk",
+    # "Itokawa.pk",
+    # "Bennu.pk",
+    # "Itokawa_nu.pk",
+    # "Bennu_nu.pk",
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
@@ -57,7 +59,8 @@ LOSSES = [                              # Losses to use
     # mse_loss,
     normalized_loss,
     normalized_L1_loss,
-    contrastive_loss
+    normalized_sqrt_L1_loss
+    # contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
@@ -72,7 +75,7 @@ USE_VISUAL_LOSS = False
 
 LIMIT_INTEGRATION_DOMAIN = False         # Sample integration points in asteroid
 
-USE_ACC = True                         # Use acceleration instead of U
+USE_ACC = True                          # Use acceleration instead of U
 if USE_ACC:
     INTEGRATOR = ACC_trap
     EXPERIMENT_ID = EXPERIMENT_ID + "_" + "ACC"
@@ -135,6 +138,7 @@ def run():
     run_counter = 0  # Counting number of total runs
 
     for sample in SAMPLES:
+        sample_lp = sample[:-3]+"_lp.pk"
         print(f"\n--------------- STARTING {sample} ----------------")
         print(f"\nModel: {MODEL_TYPE}")
         points, masses = _load_sample(sample)
@@ -215,7 +219,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
 
     # Here we set the method to sample the target points
     targets_point_sampler = get_target_point_sampler(
-        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN, limit_shape_to_asteroid="3dmeshes/" + sample)
+        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN, limit_shape_to_asteroid="3dmeshes/" + sample_lp)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -225,7 +229,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     if USE_VISUAL_LOSS:
         # Setup sampler to get points outside asteroid for visual loss
         visual_target_points_sampler = get_target_point_sampler(batch_size, method="cubical", bounds=[
-            0.0, 1.0], limit_shape_to_asteroid="3dmeshes/" + sample)
+            0.0, 1.0], limit_shape_to_asteroid="3dmeshes/" + sample_lp)
     else:
         def visual_target_points_sampler(): return None
 

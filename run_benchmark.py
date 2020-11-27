@@ -12,7 +12,7 @@ import pandas as pd
 import warnings
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
-from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss
+from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss, normalized_sqrt_L1_loss
 from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points, ACC_trap
 from gravann import U_L, ACC_L
 from gravann import is_outside, get_asteroid_bounding_box
@@ -138,7 +138,6 @@ def run():
     run_counter = 0  # Counting number of total runs
 
     for sample in SAMPLES:
-        sample_lp = sample[:-3]+"_lp.pk"
         print(f"\n--------------- STARTING {sample} ----------------")
         print(f"\nModel: {MODEL_TYPE}")
         points, masses = _load_sample(sample)
@@ -217,7 +216,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     n_inferences = []
     weighted_average = deque([], maxlen=20)
 
-    # Here we set the method to sample the target points
+    # Here we set the method to sample the target points. We use a low precision mesh to exclude points inside the asteroid.
+    sample_lp = sample[:-3]+"_lp.pk"
     targets_point_sampler = get_target_point_sampler(
         batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN, limit_shape_to_asteroid="3dmeshes/" + sample_lp)
 

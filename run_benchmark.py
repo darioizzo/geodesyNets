@@ -12,7 +12,7 @@ import pandas as pd
 import warnings
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
-from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss
+from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss, normalized_sqrt_L1_loss
 from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points, ACC_trap
 from gravann import U_L, ACC_L
 from gravann import is_outside, get_asteroid_bounding_box
@@ -22,18 +22,20 @@ from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection, plot_model_vs_mascon_contours
 
 
-EXPERIMENT_ID = "run_10_11_2020"
+EXPERIMENT_ID = "run_27_11_2020"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
 ITERATIONS = 5000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
-    # "Eros.pk",
+    "Eros.pk",
     "Churyumov-Gerasimenko.pk",
-    # "Itokawa_non_uniform.pk",
-    # "Bennu_lp.pk",
+    # "Itokawa.pk",
+    # "Bennu.pk",
+    # "Itokawa_nu.pk",
+    # "Bennu_nu.pk",
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
@@ -57,7 +59,8 @@ LOSSES = [                              # Losses to use
     # mse_loss,
     normalized_loss,
     normalized_L1_loss,
-    contrastive_loss
+    normalized_sqrt_L1_loss
+    # contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
@@ -72,7 +75,7 @@ USE_VISUAL_LOSS = False
 
 LIMIT_INTEGRATION_DOMAIN = False         # Sample integration points in asteroid
 
-USE_ACC = True                         # Use acceleration instead of U
+USE_ACC = True                          # Use acceleration instead of U
 if USE_ACC:
     INTEGRATOR = ACC_trap
     EXPERIMENT_ID = EXPERIMENT_ID + "_" + "ACC"
@@ -213,9 +216,10 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     n_inferences = []
     weighted_average = deque([], maxlen=20)
 
-    # Here we set the method to sample the target points
+    # Here we set the method to sample the target points. We use a low precision mesh to exclude points inside the asteroid.
+    sample_lp = sample[:-3]+"_lp.pk"
     targets_point_sampler = get_target_point_sampler(
-        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN, limit_shape_to_asteroid="3dmeshes/" + sample)
+        batch_size, method=target_sample_method, bounds=SAMPLE_DOMAIN, limit_shape_to_asteroid="3dmeshes/" + sample_lp)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -225,7 +229,7 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     if USE_VISUAL_LOSS:
         # Setup sampler to get points outside asteroid for visual loss
         visual_target_points_sampler = get_target_point_sampler(batch_size, method="cubical", bounds=[
-            0.0, 1.0], limit_shape_to_asteroid="3dmeshes/" + sample)
+            0.0, 1.0], limit_shape_to_asteroid="3dmeshes/" + sample_lp)
     else:
         def visual_target_points_sampler(): return None
 

@@ -28,6 +28,7 @@ def get_asteroid_bounding_box(asteroid_pk_path):
     """
     with open(asteroid_pk_path, "rb") as file:
         mesh_vertices, _ = pk.load(file)
+    mesh_vertices = np.array(mesh_vertices)
     box = [np.min(mesh_vertices[:, 0]), np.max(mesh_vertices[:, 0]),
            np.min(mesh_vertices[:, 1]), np.max(mesh_vertices[:, 1]),
            np.min(mesh_vertices[:, 2]), np.max(mesh_vertices[:, 2])]

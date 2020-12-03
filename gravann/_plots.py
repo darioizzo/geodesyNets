@@ -989,7 +989,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         return ax
 
 
-def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=None):
+def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=None, levels=10, integration_points=10000):
     """Takes a mass density model and plots the gravity potential contours 
 
     Args:
@@ -998,6 +998,8 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
         mascon_points (2-D array-like): an (N, 3) array-like object containing the coordinates of the points
         N (int): number of points in each axis of the 2D grid
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+        levels (int): number of contour lines to plot. Defaults to 10.
+        integration_points (int): number of points to use in the numerical integration. Defaults to 10000
 
     """
     # Builds a 2D grid
@@ -1018,11 +1020,11 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     p[:, 2] = zeros
     # ... and compute them
     target_points = encoding(torch.tensor(p, dtype=torch.float32))
-    potential = U_trap_opt(target_points, model, encoding=encoding, N=10000,
+    potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
                            verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
     Z = potential.reshape((N, N)).cpu().detach().numpy()
     X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
-    ax.contourf(X, Y, Z, cmap=cmap, levels=10)
+    ax.contourf(X, Y, Z, cmap=cmap, levels=levels)
     mp = mascon_points.cpu().detach().numpy()
     ax.plot(mp[:, 0], mp[:, 1], '.', c='k', alpha=0.02)
     ax.set_xticks([])
@@ -1042,11 +1044,11 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     p[:, 2] = e2
     # ... and compute them
     target_points = encoding(torch.tensor(p, dtype=torch.float32))
-    potential = U_trap_opt(target_points, model, encoding=encoding, N=10000,
+    potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
                            verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
     Z = potential.reshape((N, N)).cpu().detach().numpy()
     X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
-    ax_y.contourf(X, Y, Z, cmap=cmap, levels=10)
+    ax_y.contourf(X, Y, Z, cmap=cmap, levels=levels)
     mp = mascon_points.cpu().detach().numpy()
     ax_y.plot(mp[:, 0], mp[:, 2], '.', c='k', alpha=0.02)
     ax_y.set_xticks([])
@@ -1066,11 +1068,11 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     p[:, 2] = e2
     # ... and compute them
     target_points = encoding(torch.tensor(p, dtype=torch.float32))
-    potential = U_trap_opt(target_points, model, encoding=encoding, N=10000,
+    potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
                            verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
     Z = potential.reshape((N, N)).cpu().detach().numpy()
     X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
-    ax_x.contourf(X, Y, Z, cmap=cmap, levels=10)
+    ax_x.contourf(X, Y, Z, cmap=cmap, levels=levels)
     mp = mascon_points.cpu().detach().numpy()
     ax_x.plot(mp[:, 1], mp[:, 2], '.', c='k', alpha=0.02)
     ax_x.set_xticks([])

@@ -6,6 +6,7 @@ from ._losses import contrastive_loss, normalized_loss, normalized_L1_loss, norm
 from ._mascon_labels import ACC_L, U_L
 from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
+from ._utils import fixRandomSeeds
 
 
 def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
@@ -30,7 +31,30 @@ def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
     return (torch.sum(predicted*labels)/torch.sum(predicted*predicted)).item()
 
 
+def validation_results_unpack_df(validation_results):
+    """Converts validation df to data row  
+
+    Args:
+        validation_results (pandas.df): validation results
+
+    Returns:
+        pandas.df: df as one row
+    """
+    v = validation_results.set_index("Altitude")
+    v = v.unstack().to_frame().sort_index(level=1).T
+    v.columns = [x + '@' + str(y) for (x, y) in v.columns]
+    return v
+
+
 def validation_results_df_to_string(validation_results):
+    """Converts validation df to string
+
+    Args:
+        validation_results (pandas.df): validation results
+
+    Returns:
+        dict: dict of strings with results
+    """
     result_strings = {}
     for idx, val in validation_results.iterrows():
         result_strings[val["Altitude"]
@@ -59,6 +83,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         pandas dataframe: Results as df 
     """
     torch.cuda.empty_cache()
+    fixRandomSeeds()
     if use_acc:
         label_function = ACC_L
         integrator = ACC_trap

@@ -12,22 +12,22 @@ import pandas as pd
 import warnings
 
 from gravann import directional_encoding, positional_encoding, direct_encoding, spherical_coordinates
-from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss
+from gravann import normalized_loss, mse_loss, contrastive_loss, normalized_L1_loss, normalized_sqrt_L1_loss
 from gravann import ACC_ld, U_mc, U_ld, U_trap_opt, sobol_points, ACC_trap
 from gravann import U_L, ACC_L
 from gravann import is_outside, get_asteroid_bounding_box
 from gravann import enableCUDA, max_min_distance, fixRandomSeeds
-from gravann import get_target_point_sampler, validation, validation_results_df_to_string
+from gravann import get_target_point_sampler, validation, validation_results_unpack_df
 from gravann import init_network, train_on_batch
 from gravann import create_mesh_from_cloud, plot_model_vs_cloud_mesh, plot_model_rejection, plot_model_vs_mascon_rejection, plot_model_vs_mascon_contours
+from gravann import EarlyStopping
 
+EXPERIMENT_ID = "testing"
 
-EXPERIMENT_ID = "run_10_11_2020"
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"            # Select GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"            # Select GPUs
 SAMPLE_PATH = "mascons/"                            # Mascon folder
 # Number of training iterations
-ITERATIONS = 5000
+ITERATIONS = 10000
 # SAMPLES = glob(SAMPLE_PATH + "/*.pk")             # Use all available samples
 SAMPLES = [                                         # Use some specific samples
     # "Eros.pk",
@@ -56,8 +56,9 @@ LRs = [1e-4]                            # LRs to use
 LOSSES = [                              # Losses to use
     # mse_loss,
     normalized_loss,
+    normalized_sqrt_L1_loss,
     normalized_L1_loss,
-    contrastive_loss
+    # contrastive_loss
 ]
 
 ENCODINGS = [                           # Encodings to test
@@ -201,6 +202,8 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
         f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
+    early_stopper = EarlyStopping(save_folder=run_folder)
+
     # Init model
     model = init_network(encoding, n_neurons=100,
                          activation=activation, model_type=MODEL_TYPE)
@@ -273,7 +276,15 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
         t.set_postfix_str(
             f"L={loss.item():.3e} | AvgL={wa_out:.3e} | c={c:.3e} | visionL={vision_loss.item():.3e}")
 
+        if early_stopper.early_stop(loss.item(), model):
+            print(
+                f"Early stopping at minimal loss {early_stopper.minimal_loss}")
+            break
+
     torch.cuda.empty_cache()
+    # Restore best checkpoint
+    print("Restoring best checkpoint for validation...")
+    model.load_state_dict(torch.load(run_folder + "best_model.mdl"))
     validation_results = validation(
         model, encoding, mascon_points, mascon_masses, USE_ACC, "3dmeshes/" + sample, N_integration=300000)
 
@@ -287,17 +298,18 @@ def _run_configuration(lr, loss_fn, encoding, batch_size, sample, mascon_points,
     # store in results dataframe
     global RESULTS
     # below code will intentionally break if you change altitudes. please adapt in that case.
-    val_res = validation_results_df_to_string(validation_results)
+    val_res = validation_results_unpack_df(validation_results)
+    result_dictionary = {"Sample": sample,
+                         "Type": "ACC" if USE_ACC else "U", "Model": MODEL_TYPE,  "Loss": loss_fn.__name__, "Encoding": encoding.name,
+                         "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
+                         "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS,
+                         "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
+    results_df = pd.concat(
+        [pd.DataFrame([result_dictionary]), val_res], axis=1)
     RESULTS = RESULTS.append(
-        {"Validation_Sphere": val_res["[0-1] Spherical"], "Validation_Alt0.05": val_res[0.05],
-         "Validation_Alt0.1": val_res[0.1], "Validation_Alt0.25": val_res[0.25], "Sample": sample,
-         "Type": "ACC" if USE_ACC else "U", "Model": MODEL_TYPE,  "Loss": loss_fn.__name__, "Encoding": encoding.name,
-         "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
-         "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": N_INTEGR_POINTS,
-         "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]},
+        results_df,
         ignore_index=True
     )
-
     # store run config
     cfg = {"Sample": sample, "Type": "ACC" if USE_ACC else "U", "Model": MODEL_TYPE,  "Loss": loss_fn.__name__, "Encoding": encoding.name,
            "Integrator": INTEGRATOR.__name__, "Activation": str(activation)[:-2],
@@ -356,7 +368,7 @@ def _save_results(loss_log, weighted_average_log, validation_results, model, fol
     print(f"Saving run results to {folder} ...", end="")
     np.save(folder+"loss_log.npy", loss_log)
     np.save(folder+"weighted_average_log.npy", loss_log)
-    torch.save(model.state_dict(), folder + "model.mdl")
+    torch.save(model.state_dict(), folder + "last_model.mdl")
     validation_results.to_csv(folder + "validation_results.csv", index=False)
     print("Done.")
 

@@ -4,6 +4,7 @@ import os
 import warnings
 import gc
 import pickle as pk
+import sys
 
 
 def print_torch_mem_footprint():
@@ -99,3 +100,53 @@ def max_min_distance(points):
         dist[i] = 42424242  # distance to point itself
         distances[i] = torch.min(dist)
     return torch.max(distances).item()
+
+
+class EarlyStopping():
+    """A rudimentary implementation of callback that tells you when to early stop
+    """
+
+    def __init__(self, save_folder, patience=500, warmup=3000):
+        """Rudimentary EarlyStopping implementation
+
+        Args:
+            savefolder (str): Path where best model should be stored
+            patience (int, optional): After how many calls without improvement the stopper will return True (implies to stop). Defaults to 100.
+            warmup (int, optional): Early stopping will not trigger in the warmup.
+        """
+        self.minimal_loss = 424242424242
+        self.save_folder = save_folder
+        self.warmup = warmup
+        self.patience = patience
+        self._it = 0
+        self._iterations_without_improvement = 0
+
+    def early_stop(self, loss_value, model):
+        """Update the early stopper. Returns true if patience was reach without improvement
+
+        Args:
+            loss_value (float): current loss value
+            model (torch.nn): current model, always save best checkpoint
+
+        Returns:
+            bool: True if patience reach, else False
+        """
+
+        self._it += 1
+
+        if self._it < self.warmup:
+            return False
+
+        if loss_value < self.minimal_loss:
+            self.minimal_loss = loss_value
+            torch.save(model.state_dict(), self.save_folder + "best_model.mdl")
+            self._iterations_without_improvement = 0
+        else:
+            print("Patience ", self._iterations_without_improvement,
+                  " minimal loss=", self.minimal_loss)
+            self._iterations_without_improvement += 1
+
+        if self._iterations_without_improvement >= self.patience:
+            return True
+        else:
+            return False

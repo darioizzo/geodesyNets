@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 
 from ._losses import contrastive_loss, normalized_loss, normalized_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
-from ._mascon_labels import ACC_L, U_L
+from ._mascon_labels import ACC_L, U_L, ACC_L_non_uniform
 from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
@@ -40,7 +40,7 @@ def validation_results_df_to_string(validation_results):
 
 
 def validation(model, encoding, mascon_points, mascon_masses,
-               use_acc, asteroid_pk_path, N=5000, N_integration=500000, batch_size=100, progressbar=True):
+               use_acc, asteroid_pk_path,  mascon_masses_nu=None, N=5000, N_integration=500000, batch_size=100, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -50,6 +50,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         mascon_masses (torch.tensor): asteroid mascon masses
         use_acc (bool): if acceleration should be used (otherwise potential)
         asteroid_pk_path (str): path to the asteroid mesh, necessary for altitude
+        mascon_masses_nu (torch.tensor): non-uniform asteroid masses. Pass if using differential training
         N (int, optional): Number of evaluations per altitude. Defaults to 5000.
         N_integration (int, optional): Number of integrations points to use. Defaults to 500000.
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
@@ -67,6 +68,9 @@ def validation(model, encoding, mascon_points, mascon_masses,
         label_function = U_L
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
+    if mascon_masses_nu is not None:
+        def label_function(tp, mp, mm): return ACC_L_non_uniform(
+            tp, mp, mm, mascon_masses_nu)
 
     loss_fns = [contrastive_loss, normalized_L1_loss,
                 normalized_loss, normalized_relative_L2_loss, normalized_relative_component_loss]

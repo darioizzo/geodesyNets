@@ -1,6 +1,6 @@
 from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
-from ._integration import ACC_ld
+from ._integration import ACC_ld, U_trap_opt
 from ._mascon_labels import ACC_L
 
 from matplotlib import pyplot as plt
@@ -987,3 +987,105 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
 
     if axes is None:
         return ax
+
+
+def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=None, levels=10, integration_points=10000):
+    """Takes a mass density model and plots the gravity potential contours 
+
+    Args:
+        model (callable (N,M)->1): neural model for the asteroid.
+        encoding: the encoding for the neural inputs.
+        mascon_points (2-D array-like): an (N, 3) array-like object containing the coordinates of the points
+        N (int): number of points in each axis of the 2D grid
+        save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
+        levels (int): number of contour lines to plot. Defaults to 10.
+        integration_points (int): number of points to use in the numerical integration. Defaults to 10000
+
+    """
+    # Builds a 2D grid
+    e1, e2 = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    e1 = np.reshape(e1, (-1,))
+    e2 = np.reshape(e2, (-1,))
+    zeros = np.zeros(N**2)
+    p = np.zeros((N**2, 3))
+
+    # Opens the figure
+    fig = plt.figure(figsize=(9, 3))
+    cmap = mpl.cm.inferno
+
+    # z-axis
+    ax = fig.add_subplot(131)
+    p[:, 0] = e1
+    p[:, 1] = e2
+    p[:, 2] = zeros
+    # ... and compute them
+    target_points = encoding(torch.tensor(p, dtype=torch.float32))
+    potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
+                           verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
+    Z = potential.reshape((N, N)).cpu().detach().numpy()
+    X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    ax.contourf(X, Y, Z, cmap=cmap, levels=levels)
+    mp = mascon_points.cpu().detach().numpy()
+    ax.plot(mp[:, 0], mp[:, 1], '.', c='k', alpha=0.02)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xlim([-2, 2])
+    ax.set_ylim([-2, 2])
+    ax.set_aspect('equal', 'box')
+    ax.spines['left'].set_color('green')
+    ax.spines['right'].set_color('green')
+    ax.spines['top'].set_color('green')
+    ax.spines['bottom'].set_color('green')
+
+    # y-axis
+    ax_y = fig.add_subplot(132)
+    p[:, 0] = e1
+    p[:, 1] = zeros
+    p[:, 2] = e2
+    # ... and compute them
+    target_points = encoding(torch.tensor(p, dtype=torch.float32))
+    potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
+                           verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
+    Z = potential.reshape((N, N)).cpu().detach().numpy()
+    X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    ax_y.contourf(X, Y, Z, cmap=cmap, levels=levels)
+    mp = mascon_points.cpu().detach().numpy()
+    ax_y.plot(mp[:, 0], mp[:, 2], '.', c='k', alpha=0.02)
+    ax_y.set_xticks([])
+    ax_y.set_yticks([])
+    ax_y.set_xlim([-2, 2])
+    ax_y.set_ylim([-2, 2])
+    ax_y.set_aspect('equal', 'box')
+    ax_y.spines['left'].set_color('blue')
+    ax_y.spines['right'].set_color('blue')
+    ax_y.spines['top'].set_color('blue')
+    ax_y.spines['bottom'].set_color('blue')
+
+    # x-axis
+    ax_x = fig.add_subplot(133)
+    p[:, 0] = zeros
+    p[:, 1] = e1
+    p[:, 2] = e2
+    # ... and compute them
+    target_points = encoding(torch.tensor(p, dtype=torch.float32))
+    potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
+                           verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
+    Z = potential.reshape((N, N)).cpu().detach().numpy()
+    X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    ax_x.contourf(X, Y, Z, cmap=cmap, levels=levels)
+    mp = mascon_points.cpu().detach().numpy()
+    ax_x.plot(mp[:, 1], mp[:, 2], '.', c='k', alpha=0.02)
+    ax_x.set_xticks([])
+    ax_x.set_yticks([])
+    ax_x.set_xlim([-2, 2])
+    ax_x.set_ylim([-2, 2])
+    ax_x.set_aspect('equal', 'box')
+    ax_x.spines['left'].set_color('red')
+    ax_x.spines['right'].set_color('red')
+    ax_x.spines['top'].set_color('red')
+    ax_x.spines['bottom'].set_color('red')
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=150)
+
+    return ax

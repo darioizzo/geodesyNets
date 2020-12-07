@@ -1,8 +1,9 @@
 import pandas as pd
 import torch
 from tqdm import tqdm
+import numpy as np
 
-from ._losses import contrastive_loss, normalized_loss, normalized_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
+from ._losses import contrastive_loss, normalized_loss, normalized_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE
 from ._mascon_labels import ACC_L, U_L
 from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
@@ -69,15 +70,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integration_grid, h, N_int = compute_integration_grid(N_integration)
 
     loss_fns = [normalized_L1_loss, normalized_loss,
-                normalized_relative_L2_loss, normalized_relative_component_loss]
+                normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]
     cols = ["Altitude", "Normalized L1 Loss", "Normalized Loss",
-            "Normalized Rel. L2 Loss", "Normalized Relative Component Loss"]
+            "Normalized Rel. L2 Loss", "Normalized Relative Component Loss", "RMSE", "relRMSE"]
     results = pd.DataFrame(columns=cols)
     sampling_altitudes = [0.05, 0.1, 0.25]
-
-    if progressbar:
-        pbar = tqdm(desc="Computing validation...",
-                    total=N * (len(sampling_altitudes)))
 
     ###############################################
     # Compute validation for radially projected points (outside the asteroid),
@@ -89,17 +86,28 @@ def validation(model, encoding, mascon_points, mascon_masses,
                                               0.0, 0.15625], limit_shape_to_asteroid=asteroid_pk_path)
 
     target_points = target_sampler().detach()
-    labels.append(label_function(
-        target_points, mascon_points, mascon_masses).detach())
-    pred.append(integrator(target_points, model, encoding, N=N_int,
-                           h=h, sample_points=integration_grid).detach())
+
+    if progressbar:
+        pbar = tqdm(desc="Computing validation...",
+                    total=2 * len(target_points) + N * (len(sampling_altitudes)))
+
+    for idx in range((len(target_points) // batch_size)+1):
+        indices = list(range(idx*batch_size,
+                             np.minimum((idx+1)*batch_size, len(target_points))))
+        points = target_points[indices]
+        labels.append(label_function(
+            points, mascon_points, mascon_masses).detach())
+        pred.append(integrator(points, model, encoding, N=N_int,
+                               h=h, sample_points=integration_grid).detach())
+        if progressbar:
+            pbar.update(batch_size)
 
     pred = torch.cat(pred)
     labels = torch.cat(labels)
 
     # Compute Losses
     for loss_fn in loss_fns:
-        if loss_fn == contrastive_loss or loss_fn == normalized_relative_L2_loss or loss_fn == normalized_relative_component_loss:
+        if loss_fn in [contrastive_loss, normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]:
             loss_values.append(torch.mean(
                 loss_fn(pred, labels)).cpu().detach().item())
         else:
@@ -116,17 +124,23 @@ def validation(model, encoding, mascon_points, mascon_masses,
                                               0.15625, 0.3125], limit_shape_to_asteroid=asteroid_pk_path)
 
     target_points = target_sampler().detach()
-    labels.append(label_function(
-        target_points, mascon_points, mascon_masses).detach())
-    pred.append(integrator(target_points, model, encoding, N=N_int,
-                           h=h, sample_points=integration_grid).detach())
+    for idx in range((len(target_points) // batch_size)+1):
+        indices = list(range(idx*batch_size,
+                             np.minimum((idx+1)*batch_size, len(target_points))))
+        points = target_points[indices]
+        labels.append(label_function(
+            points, mascon_points, mascon_masses).detach())
+        pred.append(integrator(points, model, encoding, N=N_int,
+                               h=h, sample_points=integration_grid).detach())
+        if progressbar:
+            pbar.update(batch_size)
 
     pred = torch.cat(pred)
     labels = torch.cat(labels)
 
     # Compute Losses
     for loss_fn in loss_fns:
-        if loss_fn == contrastive_loss or loss_fn == normalized_relative_L2_loss or loss_fn == normalized_relative_component_loss:
+        if loss_fn in [contrastive_loss, normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]:
             loss_values.append(torch.mean(
                 loss_fn(pred, labels)).cpu().detach().item())
         else:
@@ -160,7 +174,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
 
         # Compute Losses
         for loss_fn in loss_fns:
-            if loss_fn == contrastive_loss or loss_fn == normalized_relative_L2_loss or loss_fn == normalized_relative_component_loss:
+            if loss_fn in [contrastive_loss, normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]:
                 loss_values.append(torch.mean(
                     loss_fn(pred, labels)).cpu().detach().item())
             else:

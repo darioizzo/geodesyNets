@@ -11,7 +11,7 @@ import os
 """
 Sobol low discrepancy sequence in 3 dimensions
 """
-sobol_points = sobol_seq.i4_sobol_generate(3, 200000)
+sobol_points = sobol_seq.i4_sobol_generate(3, 500000)
 
 # Naive Montecarlo method for the potential
 

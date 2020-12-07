@@ -54,7 +54,7 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
                 N, method, bounds, limit_shape_to_asteroid)
 
 
-def _get_radial_projection_sampler(steps, altitude, limit_shape_to_asteroid, debug_plot=True):
+def _get_radial_projection_sampler(steps, altitude, limit_shape_to_asteroid, debug_plot=False):
     """ Sample points by radially projection outward from asteroid center
     as in Wittick & Russel - Mixed-model gravity representations for small celestial bodies
 
@@ -91,7 +91,7 @@ def _get_radial_projection_sampler(steps, altitude, limit_shape_to_asteroid, deb
     points = np.zeros([steps*N, 3])
 
     # Sample different altitudes
-    for idx, grid_point in enumerate(np.linspace(altitude[0], altitude[1], steps)):
+    for idx, grid_point in enumerate(np.linspace(altitude[0]+1e-4, altitude[1], steps)):
         # Sample points by sampling random altitude between altitude[0] and altitude[1] times r_a
         current_altitude = grid_point * r_a
         points[idx*N:(idx+1)*N, :] = mesh_vertices + \
@@ -107,11 +107,7 @@ def _get_radial_projection_sampler(steps, altitude, limit_shape_to_asteroid, deb
         plotter.show_grid()
         plotter.show()
 
-    if len(points) < N:
-        raise ValueError(
-            "Currently cannot sampler higher N than vertex count in asteroid.")
-
-    return torch.tensor(points[np.random.choice(points.shape[0], N, replace=False)])
+    return torch.tensor(points)
 
 
 def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True, replace=True):

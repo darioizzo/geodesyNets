@@ -1,6 +1,51 @@
 import torch
 
 
+def RMSE(predicted, labels):
+    """Root mean square error
+
+    Args:
+        predicted (torch.tensor): model predictions
+        labels (torch.tensor): ground truth labels
+    Returns:
+        [torch.tensor]: root mean square error
+    """
+
+    if predicted.shape[1] != 3:
+        raise ValueError(
+            "This loss is only available for acceleration-based models.")
+
+    c = torch.sum(torch.mul(labels.view(-1), predicted.view(-1))) / \
+        torch.sum(torch.pow(predicted.view(-1), 2))
+
+    acceleration_err = torch.sum(torch.abs(labels - c*predicted), dim=1)
+
+    return torch.sqrt(torch.mean((acceleration_err)**2))
+
+
+def relRMSE(predicted, labels):
+    """Relative root mean square error
+
+    Args:
+        predicted (torch.tensor): model predictions
+        labels (torch.tensor): ground truth labels
+    Returns:
+        [torch.tensor]: Relative root mean square error
+    """
+    if predicted.shape[1] != 3:
+        raise ValueError(
+            "This loss is only available for acceleration-based models.")
+
+    acceleration_norm = torch.norm(labels, dim=1)
+
+    c = torch.sum(torch.mul(labels.view(-1), predicted.view(-1))) / \
+        torch.sum(torch.pow(predicted.view(-1), 2))
+
+    acceleration_err = torch.sum(torch.abs(labels - c*predicted), dim=1)
+
+    return torch.sqrt(torch.mean((acceleration_err / acceleration_norm)**2))
+
+
 def zero_L1_loss(predicted):
     """Computes L1 Loss assuming all targets are zero. Used to incorporate visual information of the asteroid and force network to 0 density outside
     asteroid.

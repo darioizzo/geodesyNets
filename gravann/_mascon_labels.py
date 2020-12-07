@@ -2,7 +2,7 @@ import torch
 import os
 
 
-def ACC_L_non_uniform(target_points, mascon_points, mascon_masses_u, mascon_masses_nu):
+def ACC_L_differential(target_points, mascon_points, mascon_masses_u, mascon_masses_nu):
     """Computes the difference in acceleration between the uniform and non-uniform mascon model
 
     Args:

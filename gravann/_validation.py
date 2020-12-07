@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 
 from ._losses import contrastive_loss, normalized_loss, normalized_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
-from ._mascon_labels import ACC_L, U_L, ACC_L_non_uniform
+from ._mascon_labels import ACC_L, U_L, ACC_L_differential
 from ._sample_observation_points import get_target_point_sampler
 from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 
@@ -69,7 +69,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
     if mascon_masses_nu is not None:
-        def label_function(tp, mp, mm): return ACC_L_non_uniform(
+        def label_function(tp, mp, mm): return ACC_L_differential(
             tp, mp, mm, mascon_masses_nu)
 
     loss_fns = [contrastive_loss, normalized_L1_loss,

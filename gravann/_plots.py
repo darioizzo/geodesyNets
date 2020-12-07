@@ -568,7 +568,8 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
 
 
 def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, crop_p=1e-2, s=100, save_path=None,
-                                  c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, offset=0.0, heatmap=False, mascon_alpha=0.05, add_shape_base_value=None):
+                                  c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, offset=0.0, heatmap=False, mascon_alpha=0.05,
+                                  add_shape_base_value=None, add_const_density=1.):
     """Plots both the mascon and model contours in one figure for direct comparison
 
     Args:
@@ -588,6 +589,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         heatmap (bool): determines if contour lines or heatmap are displayed
         mascon_alpha (float): alpha of the overlaid mascon model. Defaults to 0.05.
         add_shape_base_value (str): path to asteroid mesh which is then used to add 1 to density inside asteroid
+        add_const_density (float): density to add inside asteroid if add_shape_base_value was passed
     """
 
     # Mascon masses
@@ -626,7 +628,8 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         if add_shape_base_value is not None:
             outside_mask = torch.bitwise_not(
                 is_outside_torch(candidates, triangles))
-            rho_candidates += torch.unsqueeze(outside_mask.float() * 1., 1)
+            rho_candidates += torch.unsqueeze(outside_mask.float()
+                                              * add_const_density, 1)
 
         mask = torch.abs(rho_candidates) > (torch.rand(batch_size, 1) + crop_p)
         rho_candidates = rho_candidates[mask]
@@ -685,7 +688,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mask = torch.logical_and(z - offset < mascon_slice_thickness,
                              z - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
-        [0, 0, 1]), axes=ax2, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value)
+        [0, 0, 1]), axes=ax2, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value, add_const_density=add_const_density)
     ax2.scatter(x[mask], y[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
 
@@ -706,7 +709,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mask = torch.logical_and(y - offset < mascon_slice_thickness,
                              y - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
-        [0, 1, 0]), axes=ax3, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value)
+        [0, 1, 0]), axes=ax3, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value, add_const_density=add_const_density)
     ax3.scatter(x[mask], z[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
 
@@ -727,7 +730,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mask = torch.logical_and(x - offset < mascon_slice_thickness,
                              x - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
-        [1, 0, 0]), axes=ax4, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value)
+        [1, 0, 0]), axes=ax4, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value, add_const_density=add_const_density)
     ax4.scatter(y[mask], z[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
     ax4.set_xlim([-1, 1])
@@ -929,7 +932,9 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     return ax, label_values_right
 
 
-def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], add_shape_base_value=None):
+def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]),
+                        N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+                        add_shape_base_value=None, add_const_density=1.):
     """Takes a mass density model and plots the density contours of its section with
        a 2D plane
 
@@ -943,6 +948,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         axes (matplolib axes): the axes where to plot. Defaults to None, in which case axes are created.
         levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
         add_shape_base_value (str): path to asteroid mesh which is then used to add 1 to density inside asteroid
+        add_const_density (float): density to add inside asteroid if add_shape_base_value was passed
     """
     # Builds a 2D grid on the z = 0 plane
     x, y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
@@ -987,7 +993,8 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         outside_mask = np.invert(
             is_outside(newp, np.asarray(mesh_vertices),
                        np.asarray(mesh_triangles)))
-        rho += torch.unsqueeze(torch.tensor(outside_mask).float(), 1)
+        rho += torch.unsqueeze(torch.tensor(outside_mask).float()
+                               * add_const_density, 1)
 
     Z = rho.reshape((N, N)).cpu().detach().numpy()
 

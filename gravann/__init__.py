@@ -32,7 +32,7 @@ from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 
 # Import the labeling functions the mascons
-from ._mascon_labels import U_L, ACC_L, ACC_L_non_uniform
+from ._mascon_labels import U_L, ACC_L, ACC_L_differential
 
 # Import training utility functions
 from ._train import init_network, train_on_batch

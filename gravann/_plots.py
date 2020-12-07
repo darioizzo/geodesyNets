@@ -587,6 +587,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         offset (float): an offset to apply to the plane in the direction of the section normal
         heatmap (bool): determines if contour lines or heatmap are displayed
         mascon_alpha (float): alpha of the overlaid mascon model. Defaults to 0.05.
+        add_shape_base_value (str): path to asteroid mesh which is then used to add 1 to density inside asteroid
     """
 
     # Mascon masses
@@ -620,10 +621,13 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         candidates = torch.rand(batch_size, 3) * 2 - 1
         nn_inputs = encoding(candidates)
         rho_candidates = model(nn_inputs).detach() * c
+
+        # Add 1 for points inside asteroid (for differential training / models)
         if add_shape_base_value is not None:
             outside_mask = torch.bitwise_not(
                 is_outside_torch(candidates, triangles))
             rho_candidates += torch.unsqueeze(outside_mask.float() * 1., 1)
+
         mask = torch.abs(rho_candidates) > (torch.rand(batch_size, 1) + crop_p)
         rho_candidates = rho_candidates[mask]
         candidates = [[it[0].item(), it[1].item(), it[2].item()]
@@ -938,6 +942,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         offset (float): an offset to apply to the plane in the direction of the section normal
         axes (matplolib axes): the axes where to plot. Defaults to None, in which case axes are created.
         levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
+        add_shape_base_value (str): path to asteroid mesh which is then used to add 1 to density inside asteroid
     """
     # Builds a 2D grid on the z = 0 plane
     x, y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
@@ -977,6 +982,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
     inp = encoding(torch.tensor(newp, dtype=torch.float32))
     rho = model(inp) * c
 
+    # Add 1 for points inside asteroid (for differential training / models)
     if add_shape_base_value is not None:
         outside_mask = np.invert(
             is_outside(newp, np.asarray(mesh_vertices),

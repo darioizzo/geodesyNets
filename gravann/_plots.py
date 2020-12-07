@@ -2,6 +2,8 @@ from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 from ._integration import ACC_ld, U_trap_opt
 from ._mascon_labels import ACC_L
+from ._hulls import is_outside_torch, is_outside
+from ._utils import unpack_triangle_mesh
 
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -10,6 +12,7 @@ import matplotlib.colors as colors
 import torch
 import math
 import numpy as np
+import pickle as pk
 import pyvista as pv
 import pyvistaqt as pvqt
 from tqdm import tqdm
@@ -564,7 +567,9 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
         plt.savefig(save_path, dpi=150)
 
 
-def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, crop_p=1e-2, s=100, save_path=None, c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, offset=0.0, heatmap=False, mascon_alpha=0.05):
+def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, crop_p=1e-2, s=100, save_path=None,
+                                  c=1., backcolor=[0.15, 0.15, 0.15], progressbar=False, offset=0.0, heatmap=False, mascon_alpha=0.05,
+                                  add_shape_base_value=None, add_const_density=1.):
     """Plots both the mascon and model contours in one figure for direct comparison
 
     Args:
@@ -583,12 +588,20 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         offset (float): an offset to apply to the plane in the direction of the section normal
         heatmap (bool): determines if contour lines or heatmap are displayed
         mascon_alpha (float): alpha of the overlaid mascon model. Defaults to 0.05.
+        add_shape_base_value (str): path to asteroid mesh which is then used to add 1 to density inside asteroid
+        add_const_density (float): density to add inside asteroid if add_shape_base_value was passed
     """
 
     # Mascon masses
     x = mascon_points[:, 0].cpu()
     y = mascon_points[:, 1].cpu()
     z = mascon_points[:, 2].cpu()
+
+    if add_shape_base_value is not None:
+        # Load asteroid triangles
+        with open(add_shape_base_value, "rb") as file:
+            mesh_vertices, mesh_triangles = pk.load(file)
+            triangles = unpack_triangle_mesh(mesh_vertices, mesh_triangles)
 
     s = 22000 / len(mascon_points)
 
@@ -610,7 +623,15 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
         candidates = torch.rand(batch_size, 3) * 2 - 1
         nn_inputs = encoding(candidates)
         rho_candidates = model(nn_inputs).detach() * c
-        mask = rho_candidates > (torch.rand(batch_size, 1) + crop_p)
+
+        # Add 1 for points inside asteroid (for differential training / models)
+        if add_shape_base_value is not None:
+            outside_mask = torch.bitwise_not(
+                is_outside_torch(candidates, triangles))
+            rho_candidates += torch.unsqueeze(outside_mask.float()
+                                              * add_const_density, 1)
+
+        mask = torch.abs(rho_candidates) > (torch.rand(batch_size, 1) + crop_p)
         rho_candidates = rho_candidates[mask]
         candidates = [[it[0].item(), it[1].item(), it[2].item()]
                       for it, m in zip(candidates, mask) if m]
@@ -624,12 +645,11 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
             pbar.update(len(rho_candidates))
     if progressbar:
         pbar.close()
-    points = torch.cat(points, dim=0)[:N]  # concat and discard after N
-    rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
+    points = torch.cat(points, dim=0)[: N]  # concat and discard after N
+    rho = torch.cat(rho, dim=0)[: N]  # concat and discard after N
 
-    levels = np.linspace(0., 1., 10)
-    levels = np.asarray(levels) * \
-        np.max(rho.cpu().detach().numpy())  # normalize scale
+    levels = np.linspace(np.min(rho.cpu().detach().numpy()),
+                         np.max(rho.cpu().detach().numpy()), 10)
 
     fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
     ax = fig.add_subplot(221, projection='3d')
@@ -640,7 +660,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     # And we plot it
     ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.01)
     ax.scatter(points[:, 0].cpu(), points[:, 1].cpu(), points[:, 2].cpu(),
-               marker='.', c=rejection_col, s=s, alpha=0.05)
+               marker='.', c=rejection_col, s=s*2, alpha=0.1)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -668,7 +688,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mask = torch.logical_and(z - offset < mascon_slice_thickness,
                              z - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
-        [0, 0, 1]), axes=ax2, levels=levels, c=c, offset=offset, heatmap=heatmap)
+        [0, 0, 1]), axes=ax2, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value, add_const_density=add_const_density)
     ax2.scatter(x[mask], y[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
 
@@ -689,7 +709,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mask = torch.logical_and(y - offset < mascon_slice_thickness,
                              y - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
-        [0, 1, 0]), axes=ax3, levels=levels, c=c, offset=offset, heatmap=heatmap)
+        [0, 1, 0]), axes=ax3, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value, add_const_density=add_const_density)
     ax3.scatter(x[mask], z[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
 
@@ -710,7 +730,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     mask = torch.logical_and(x - offset < mascon_slice_thickness,
                              x - offset > -mascon_slice_thickness)
     _ = plot_model_contours(model, encoding, section=np.array(
-        [1, 0, 0]), axes=ax4, levels=levels, c=c, offset=offset, heatmap=heatmap)
+        [1, 0, 0]), axes=ax4, levels=levels, c=c, offset=offset, heatmap=heatmap, add_shape_base_value=add_shape_base_value, add_const_density=add_const_density)
     ax4.scatter(y[mask], z[mask], color=mascon_color,
                 s=normalized_masses[mask], alpha=mascon_alpha)
     ax4.set_xlim([-1, 1])
@@ -757,7 +777,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     """
     print("Sampling points at altitude")
     points = get_target_point_sampler(N, method="altitude", bounds=[
-                                      altitude], limit_shape_to_asteroid=sample, replace=False)()
+        altitude], limit_shape_to_asteroid=sample, replace=False)()
 
     print("Got ", len(points), " points.")
     if plane == "XY":
@@ -912,7 +932,9 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     return ax, label_values_right
 
 
-def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]), N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]):
+def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 1]),
+                        N=100, save_path=None, offset=0., axes=None, c=1., levels=[0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+                        add_shape_base_value=None, add_const_density=1.):
     """Takes a mass density model and plots the density contours of its section with
        a 2D plane
 
@@ -925,6 +947,8 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         offset (float): an offset to apply to the plane in the direction of the section normal
         axes (matplolib axes): the axes where to plot. Defaults to None, in which case axes are created.
         levels (list optional): the contour levels to be plotted. Defaults to [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].
+        add_shape_base_value (str): path to asteroid mesh which is then used to add 1 to density inside asteroid
+        add_const_density (float): density to add inside asteroid if add_shape_base_value was passed
     """
     # Builds a 2D grid on the z = 0 plane
     x, y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
@@ -935,6 +959,11 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
     p[:, 0] = x
     p[:, 1] = y
     p[:, 2] = z
+
+    if add_shape_base_value is not None:
+        # Load asteroid triangles
+        with open(add_shape_base_value, "rb") as file:
+            mesh_vertices, mesh_triangles = pk.load(file)
 
     # The cross product between the vertical and the desired direction ...
     section = section / np.linalg.norm(section)
@@ -958,6 +987,15 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
     # ... and compute them
     inp = encoding(torch.tensor(newp, dtype=torch.float32))
     rho = model(inp) * c
+
+    # Add 1 for points inside asteroid (for differential training / models)
+    if add_shape_base_value is not None:
+        outside_mask = np.invert(
+            is_outside(newp, np.asarray(mesh_vertices),
+                       np.asarray(mesh_triangles)))
+        rho += torch.unsqueeze(torch.tensor(outside_mask).float()
+                               * add_const_density, 1)
+
     Z = rho.reshape((N, N)).cpu().detach().numpy()
 
     X, Y = np.meshgrid(np.linspace(-1, 1, N), np.linspace(-1, 1, N))
@@ -972,7 +1010,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         X, Y = Y, X
 
     if heatmap:
-        p = ax.contourf(X, Y, Z, cmap="Greys", levels=levels)
+        p = ax.contourf(X, Y, Z, cmap="YlOrRd", levels=levels)
         cb = plt.colorbar(p, ax=ax)
     else:
         cmap = mpl.cm.viridis

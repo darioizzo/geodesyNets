@@ -2,7 +2,7 @@ from torch import nn
 import torch
 from ._losses import contrastive_loss, zero_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
 
-from .external._siren import Siren
+from .networks._siren import Siren
 from .networks._nerf import NERF
 
 
@@ -61,7 +61,7 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="d
         return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation, skip=[4])
     elif model_type == "siren":
         return Siren(in_features=encoding.dim, out_features=1, hidden_features=100,
-                     hidden_layers=9, outermost_linear=True)
+                     hidden_layers=9, outermost_linear=True, outermost_activation=activation)
 
 
 def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, scheduler, integrator, N, vision_targets=None, integration_domain=None):

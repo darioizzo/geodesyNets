@@ -7,7 +7,7 @@ import pyvista as pv
 import warnings
 from scipy.spatial import KDTree
 
-from ._utils import unpack_triangle_mesh
+from ._utils import unpack_triangle_mesh, get_asteroid_bounding_box
 from ._hulls import is_outside_torch, is_outside
 
 # There is no torch.pi so we define it here
@@ -26,7 +26,7 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
                                 call). Defaults to "cubical".
         limit_shape_to_asteroid(str, optional): Path to a *.pk file specifies an asteroid shape to exclude from samples
                                                 or use for altitude sampling
-        replace (bool, optional): Only altitude. If points are allowed to be sampled twice in the same batch or not 
+        replace (bool, optional): Only altitude. If points are allowed to be sampled twice in the same batch or not
                                   (for false maximum sample points = #triangles in mesh)
 
     Returns:
@@ -47,9 +47,71 @@ def get_target_point_sampler(N, method="cubical", bounds=[1.1, 1.2], limit_shape
     else:
         if method == "altitude":
             return _get_altitude_sampler(N, bounds[0], limit_shape_to_asteroid, replace=replace)
+        elif method == "radial_projection":
+            return lambda: _get_radial_projection_sampler(N, altitude=bounds, limit_shape_to_asteroid=limit_shape_to_asteroid)
         else:
             return _get_asteroid_limited_sampler(
                 N, method, bounds, limit_shape_to_asteroid)
+
+
+def _get_radial_projection_sampler(steps, altitude, limit_shape_to_asteroid, debug_plot=True):
+    """ Sample points by radially projection outward from asteroid center
+    as in Wittick & Russel - Mixed-model gravity representations for small celestial bodies
+
+    Args:
+        steps (int): discretization steps for the sampling
+        altitude (float): altitude to project by
+        limit_shape_to_asteroid (str): path of to asteroid mesh
+        debug_plot (bool): Can be used to plot created points.
+
+    Raises:
+        ValueError: If too many points are requested
+
+    Returns:
+        [type]: [description]
+    """
+    #
+    # Load asteroid vertices
+    with open(limit_shape_to_asteroid, "rb") as file:
+        mesh_vertices, mesh_triangles = pk.load(file)
+
+    # Get bounding box and compute central point from that.
+    bb = get_asteroid_bounding_box(limit_shape_to_asteroid)
+    center = [0.5 * (bb[0][0] + bb[0][1]),
+              0.5 * (bb[1][0] + bb[1][1]),
+              0.5 * (bb[2][0] + bb[2][1])]
+
+    # Pick radius as maximal extension of the asteroid in one dim.
+    # Note this may cause problems for asteroids that extend beyond the sphere with that radius.
+    # Therefore we later discard points which accidentally end up in the asteroid.
+    r_a = np.maximum(np.maximum(bb[0][1]-bb[0][0], bb[1][1]-bb[1][0]),
+                     bb[2][1]-bb[2][0]) / 2.0
+
+    N = len(mesh_vertices)
+    points = np.zeros([steps*N, 3])
+
+    # Sample different altitudes
+    for idx, grid_point in enumerate(np.linspace(altitude[0], altitude[1], steps)):
+        # Sample points by sampling random altitude between altitude[0] and altitude[1] times r_a
+        current_altitude = grid_point * r_a
+        points[idx*N:(idx+1)*N, :] = mesh_vertices + \
+            (np.asarray(mesh_vertices) - center) * current_altitude
+
+    if debug_plot:
+        mesh_faces = [[3, t[0], t[1], t[2]] for t in mesh_triangles]
+        # Create PV Polydata
+        mesh = pv.PolyData(np.asarray(mesh_vertices), np.asarray(mesh_faces))
+        plotter = pv.Plotter()
+        plotter.add_mesh(mesh, color='brown')
+        plotter.add_mesh(points, color='red')
+        plotter.show_grid()
+        plotter.show()
+
+    if len(points) < N:
+        raise ValueError(
+            "Currently cannot sampler higher N than vertex count in asteroid.")
+
+    return torch.tensor(points[np.random.choice(points.shape[0], N, replace=False)])
 
 
 def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=False, discard_points_inside=True, replace=True):
@@ -61,7 +123,7 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         limit_shape_to_asteroid (str): path of to asteroid mesh
         plot_normals (bool, optional): Display normals and created points for debugging. Defaults to False.
         discard_points_inside (bool, optional): Will discard all points that lie inside the asteroid (can happen for nonconvex ones). Defaults to True.
-        replace (bool, optional): If points are allowed to be sampled twice in the same batch or not 
+        replace (bool, optional): If points are allowed to be sampled twice in the same batch or not
                                   (for false maximum sample points = #triangles in mesh)
 
     Returns:
@@ -96,14 +158,14 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
         plotter.show_grid()
         plotter.show()
 
-    # Discard points that are to close
+    # Discard points that are too close (or too far)
     eps = 1e-4  # maximum altitude error
     kd_tree = KDTree(centers)
     distances, _ = kd_tree.query(points_at_altitude, k=1)
-    is_too_close = np.abs(altitude-distances) < eps
-    warnings.warn("Discarding " + str(len(is_too_close) - np.sum(is_too_close)) + " of " + str(len(is_too_close)) +
-                  " points in altitude sampler due to too small altitude.")
-    points_at_altitude = points_at_altitude[is_too_close]
+    distance_correct = np.abs(altitude-distances) < eps
+    warnings.warn("Discarding " + str(len(distance_correct) - np.sum(distance_correct)) + " of " + str(len(distance_correct)) +
+                  " points in altitude sampler which did not meet requested altitude.")
+    points_at_altitude = points_at_altitude[distance_correct]
 
     if discard_points_inside:
         # print("Discarding points inside asteroid. Prev len=",

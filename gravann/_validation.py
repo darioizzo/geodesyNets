@@ -56,7 +56,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         progressbar (bool, optional): Display a progress. Defaults to True.
 
     Returns:
-        pandas dataframe: Results as df 
+        pandas dataframe: Results as df
     """
     torch.cuda.empty_cache()
     if use_acc:
@@ -68,34 +68,31 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
 
-    loss_fns = [contrastive_loss, normalized_L1_loss,
-                normalized_loss, normalized_relative_L2_loss, normalized_relative_component_loss]
-    cols = ["Altitude", "Contrastive Loss",
-            "Normalized L1 Loss", "Normalized Loss", "Normalized Rel. L2 Loss", "Normalized Relative Component Loss"]
+    loss_fns = [normalized_L1_loss, normalized_loss,
+                normalized_relative_L2_loss, normalized_relative_component_loss]
+    cols = ["Altitude", "Normalized L1 Loss", "Normalized Loss",
+            "Normalized Rel. L2 Loss", "Normalized Relative Component Loss"]
     results = pd.DataFrame(columns=cols)
     sampling_altitudes = [0.05, 0.1, 0.25]
 
     if progressbar:
         pbar = tqdm(desc="Computing validation...",
-                    total=N * (len(sampling_altitudes) + 1))
+                    total=N * (len(sampling_altitudes)))
 
     ###############################################
-    # Compute validation for random points (outside the asteroid)
+    # Compute validation for radially projected points (outside the asteroid),
+
+    # Low altitude
     torch.cuda.empty_cache()
     pred, labels, loss_values = [], [], []
-    target_sampler = get_target_point_sampler(
-        batch_size, method="spherical", bounds=[0, 1], limit_shape_to_asteroid=asteroid_pk_path)
-    for batch in range(N // batch_size):
-        target_points = target_sampler().detach()
-        labels.append(label_function(
-            target_points, mascon_points, mascon_masses).detach())
+    target_sampler = get_target_point_sampler(50, method="radial_projection", bounds=[
+                                              0.0, 0.15625], limit_shape_to_asteroid=asteroid_pk_path)
 
-        pred.append(integrator(target_points, model, encoding, N=N_int,
-                               h=h, sample_points=integration_grid).detach())
-
-        if progressbar:
-            pbar.update(batch_size)
-        torch.cuda.empty_cache()
+    target_points = target_sampler().detach()
+    labels.append(label_function(
+        target_points, mascon_points, mascon_masses).detach())
+    pred.append(integrator(target_points, model, encoding, N=N_int,
+                           h=h, sample_points=integration_grid).detach())
 
     pred = torch.cat(pred)
     labels = torch.cat(labels)
@@ -110,7 +107,34 @@ def validation(model, encoding, mascon_points, mascon_masses,
                 loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
 
     results = results.append(
-        dict(zip(cols, ["[0-1] Spherical"] + loss_values)), ignore_index=True)
+        dict(zip(cols, ["Low Altitude"] + loss_values)), ignore_index=True)
+
+    # High altitude
+    torch.cuda.empty_cache()
+    pred, labels, loss_values = [], [], []
+    target_sampler = get_target_point_sampler(50, method="radial_projection", bounds=[
+                                              0.15625, 0.3125], limit_shape_to_asteroid=asteroid_pk_path)
+
+    target_points = target_sampler().detach()
+    labels.append(label_function(
+        target_points, mascon_points, mascon_masses).detach())
+    pred.append(integrator(target_points, model, encoding, N=N_int,
+                           h=h, sample_points=integration_grid).detach())
+
+    pred = torch.cat(pred)
+    labels = torch.cat(labels)
+
+    # Compute Losses
+    for loss_fn in loss_fns:
+        if loss_fn == contrastive_loss or loss_fn == normalized_relative_L2_loss or loss_fn == normalized_relative_component_loss:
+            loss_values.append(torch.mean(
+                loss_fn(pred, labels)).cpu().detach().item())
+        else:
+            loss_values.append(torch.mean(
+                loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
+
+    results = results.append(
+        dict(zip(cols, ["High Altitude"] + loss_values)), ignore_index=True)
 
     ################################################
     # Compute errors at different altitudes

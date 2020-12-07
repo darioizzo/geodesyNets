@@ -624,7 +624,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
             outside_mask = torch.bitwise_not(
                 is_outside_torch(candidates, triangles))
             rho_candidates += torch.unsqueeze(outside_mask.float() * 1., 1)
-        mask = rho_candidates > (torch.rand(batch_size, 1) + crop_p)
+        mask = torch.abs(rho_candidates) > (torch.rand(batch_size, 1) + crop_p)
         rho_candidates = rho_candidates[mask]
         candidates = [[it[0].item(), it[1].item(), it[2].item()]
                       for it, m in zip(candidates, mask) if m]

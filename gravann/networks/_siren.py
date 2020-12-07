@@ -3,17 +3,7 @@ from torch import nn
 import torch
 import numpy as np
 
-
-class ActivationLayer(nn.Module):
-    """Very simple activation layer to allow different last layer activations of the siren
-    """
-
-    def __init__(self, activation=torch.abs):
-        super().__init__()
-        self.activation = activation
-
-    def forward(self, input):
-        return self.activation(input)
+from ._abs_layer import AbsLayer
 
 
 class SineLayer(nn.Module):
@@ -56,8 +46,9 @@ class SineLayer(nn.Module):
 
 
 class Siren(nn.Module):
-    def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False,
+    def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False, outermost_activation=AbsLayer(),
                  first_omega_0=30, hidden_omega_0=30.):
+
         super().__init__()
 
         self.in_features = in_features
@@ -77,11 +68,10 @@ class Siren(nn.Module):
                                              np.sqrt(6 / hidden_features) / hidden_omega_0)
 
             self.net.append(final_linear)
+            self.net.append(outermost_activation)
         else:
             self.net.append(SineLayer(hidden_features, out_features,
                                       is_first=False, omega_0=hidden_omega_0))
-
-        self.net.append(ActivationLayer())
 
         self.net = nn.Sequential(*self.net)
 

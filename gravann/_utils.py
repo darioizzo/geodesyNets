@@ -4,7 +4,6 @@ import os
 import warnings
 import gc
 import pickle as pk
-import sys
 
 
 def print_torch_mem_footprint():
@@ -135,17 +134,15 @@ class EarlyStopping():
 
         self._it += 1
 
-        if self._it < self.warmup:
-            return False
-
         if loss_value < self.minimal_loss:
             self.minimal_loss = loss_value
             torch.save(model.state_dict(), self.save_folder + "best_model.mdl")
             self._iterations_without_improvement = 0
         else:
-            print("Patience ", self._iterations_without_improvement,
-                  " minimal loss=", self.minimal_loss)
             self._iterations_without_improvement += 1
+
+        if self._it < self.warmup:
+            return False
 
         if self._iterations_without_improvement >= self.patience:
             return True

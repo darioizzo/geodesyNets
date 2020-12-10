@@ -35,7 +35,8 @@ from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 from ._mascon_labels import U_L, ACC_L, ACC_L_differential
 
 # Import training utility functions
-from ._train import init_network, train_on_batch
+from ._train import init_network, train_on_batch, run_training
+
 # Custom layer for siren
 from .networks._abs_layer import AbsLayer
 

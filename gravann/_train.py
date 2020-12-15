@@ -137,7 +137,7 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     return loss, c, vision_loss
 
 
-def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation):
+def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation, omega):
     """Initializes params for the training run
 
     Args:
@@ -149,6 +149,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
         batch_size (int): Number of target points per batch
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
+        omega (float): Siren omega value
 
     Returns:
         model,early_stopper,optimizer,scheduler, target_sampler,vis_sampler,run_folder
@@ -163,14 +164,14 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     run_folder = cfg["output_folder"] + \
         sample.replace("/", "_") + \
         f"/LR={lr}_loss={loss_fn.__name__}_encoding={encoding.name}_" + \
-        f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}/"
+        f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}_omega={omega:.2}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
     early_stopper = EarlyStopping(save_folder=run_folder)
 
     # Init model
     model = init_network(encoding, n_neurons=100,
-                         activation=activation, model_type=cfg["model"]["type"], siren_omega=cfg["siren"]["omega"])
+                         activation=activation, model_type=cfg["model"]["type"], siren_omega=omega)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -193,7 +194,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     return model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder
 
 
-def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation):
+def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation, omega):
     """Runs a specific parameter configuration
     Args:
         cfg (dict): global run cfg 
@@ -203,10 +204,11 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         batch_size (int): Number of target points per batch
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
+        omega (float): Siren omega value
     """
     # Initialize everything we need
     initialized_vars = _init_training_run(
-        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation)
+        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega)
     model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder = initialized_vars
 
     mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(

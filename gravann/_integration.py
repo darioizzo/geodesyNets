@@ -11,7 +11,7 @@ import os
 """
 Sobol low discrepancy sequence in 3 dimensions
 """
-sobol_points = sobol_seq.i4_sobol_generate(3, 200000)
+sobol_points = sobol_seq.i4_sobol_generate(3, 500000)
 
 # Naive Montecarlo method for the potential
 
@@ -253,7 +253,7 @@ def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=
 
     # Determine grid to compute on
     if sample_points is None:
-        sample_points, h, N = compute_integration_grid(N, noise)
+        sample_points, h, N = compute_integration_grid(N, noise, domain)
     else:
         if h is None:
             raise(ValueError("h has to be passed if sample points are passed."))

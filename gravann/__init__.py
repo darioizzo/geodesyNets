@@ -23,7 +23,7 @@ from ._plots import plot_mesh, plot_model_mesh, plot_point_cloud_mesh, plot_poin
 from ._plots import plot_model_vs_cloud_mesh, plot_gradients_per_layer, plot_model_vs_mascon_rejection, plot_model_vs_mascon_contours
 
 # Importing the validation method
-from ._validation import validation, validation_results_df_to_string, compute_c_for_model
+from ._validation import validation, validation_results_df_to_string, validation_results_unpack_df, compute_c_for_model
 
 # Importing methods to sample points around asteroid
 from ._sample_observation_points import get_target_point_sampler
@@ -35,12 +35,13 @@ from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
 from ._mascon_labels import U_L, ACC_L, ACC_L_differential
 
 # Import training utility functions
-from ._train import init_network, train_on_batch
+from ._train import init_network, train_on_batch, run_training
+
 # Custom layer for siren
 from .networks._abs_layer import AbsLayer
 
 # Import utility functions
-from ._utils import max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box
+from ._utils import max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box, EarlyStopping
 
 # Set main device by default to cpu if no other choice was made before
 if "TORCH_DEVICE" not in os.environ:

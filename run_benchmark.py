@@ -101,10 +101,10 @@ def _cfg_to_func(cfg):
         encodings.append(getattr(gravann, encoding))
 
     for activation in cfg["model"]["activation"]:
-        if activation == "nn.Abs":
+        if activation == "Abs":
             activations.append(gravann.AbsLayer())
         else:
-            activations.append(getattr(torch, encoding)())
+            activations.append(getattr(torch.nn, activation)())
 
     cfg["training"]["losses"] = losses
     cfg["model"]["encoding"] = encodings

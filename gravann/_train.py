@@ -1,10 +1,12 @@
 from torch import nn
 import torch
 import pathlib
+import pandas as pd
 from tqdm import tqdm
 from collections import deque
 import matplotlib.pyplot as plt
 import numpy as np
+import pickle as pk
 
 from ._losses import contrastive_loss, zero_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
 from ._mascon_labels import ACC_L, ACC_L_differential, U_L
@@ -168,7 +170,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
 
     # Init model
     model = init_network(encoding, n_neurons=100,
-                         activation=activation, model_type=cfg["model"]["type"], cfg["siren"]["omega"])
+                         activation=activation, model_type=cfg["model"]["type"], siren_omega=cfg["siren"]["omega"])
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -277,16 +279,16 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         cfg["model"]["use_acceleration"], "3dmeshes/" + sample,
         N_integration=500000, N=cfg["training"]["validation_points"])
 
-    _save_results(loss_log, weighted_average_log,
-                  validation_results, model, run_folder)
+    save_results(loss_log, weighted_average_log,
+                 validation_results, model, run_folder)
 
-    _save_plots(model, encoding, mascon_points, lr_log, loss_log,
-                weighted_average_log, vision_loss_log,  n_inferences, run_folder, c, cfg["plotting_points"])
+    save_plots(model, encoding, mascon_points, lr_log, loss_log,
+               weighted_average_log, vision_loss_log,  n_inferences, run_folder, c, cfg["plotting_points"])
 
     # store run config
     cfg_dict = {"Sample": sample, "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                 "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
-                "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method,
+                "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method,
                 "Integration Points": cfg["integration"]["points"], "Vision Loss": cfg["training"]["visual_loss"], "c": c}
 
     with open(run_folder+'config.pk', 'wb') as handle:
@@ -297,7 +299,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     result_dictionary = {"Sample": sample,
                          "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                          "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
-                         "Batch Size": batch_size, "LR": lr, "Target Sampler": target_sample_method, "Integration Points": cfg["integration"]["points"],
+                         "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method, "Integration Points": cfg["integration"]["points"],
                          "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
     results_df = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)

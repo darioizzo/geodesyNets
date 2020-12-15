@@ -4,11 +4,9 @@ plotting_points = 2500
 sample_path = "mascons/"
 samples = [                                         
     # "Eros.pk",
-    # "Churyumov-Gerasimenko.pk",
-    # "Itokawa.pk",
-    # "Bennu.pk",
-    # "Itokawa_nu.pk",
-    # "Bennu_nu.pk",
+    "Churyumov-Gerasimenko.pk",
+    # "Itokawa.pk", #For differential training enable the flag in the training section
+    # "Bennu.pk", #For differential training enable the flag in the training section
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
@@ -18,14 +16,14 @@ samples = [
     # "sample_07_cluster_2441.pk",
     # "sample_08_cluster_1970.pk",
     # "sample_09_cluster_1896.pk",
-    "Torus.pk",
+    # "Torus.pk",
 ]
 
 [model]
 activation = [
-    #"nn.Sigmoid",
-    "nn.Abs",
-    #"nn.Tanh",
+    #"Sigmoid",
+    "Abs",
+    # "Tanh",
 ]
 encoding =  [                           
     # "directional_encoding",
@@ -38,13 +36,13 @@ target_point_samplers = [
 ]
 sample_domain = [0.0,1.0]
 use_acceleration = true
-type = "default" # either "siren" , "default", "nerf"
+type = "siren" # either "siren" , "default", "nerf"
 
 [siren]
-omega = [30.0]
+omega = 30.0
 
 [integration]
-points = 3000
+points = 10000
 limit_domain=false
 domain = [[-1.0,1.0],[-1.0,1.0],[-1.0,1.0]]
 
@@ -53,9 +51,9 @@ iterations = 300
 batch_sizes = [100]
 lr = 1e-4
 losses = [
-    #"mse_loss",
-    "normalized_loss",
-    "normalized_sqrt_L1_loss",
+    # "mse_loss",
+    #"normalized_loss",
+    #"normalized_sqrt_L1_loss",
     "normalized_L1_loss",
     # "contrastive_loss"
 ]

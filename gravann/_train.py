@@ -7,6 +7,7 @@ from collections import deque
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle as pk
+import time
 
 from ._losses import contrastive_loss, zero_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
 from ._mascon_labels import ACC_L, ACC_L_differential, U_L
@@ -206,6 +207,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         activation (Torch fun): Activation function on last network layer
         omega (float): Siren omega value
     """
+    start = time.time()
     # Initialize everything we need
     initialized_vars = _init_training_run(
         cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega)
@@ -298,11 +300,14 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
 
     # Compute validation results
     val_res = validation_results_unpack_df(validation_results)
+
+    end = time.time()
+    runtime = end - start
     result_dictionary = {"Sample": sample,
                          "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                          "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
                          "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method, "Integration Points": cfg["integration"]["points"],
-                         "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
+                         "Runtime": runtime, "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
     results_df = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)
     return results_df

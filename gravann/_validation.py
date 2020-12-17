@@ -65,7 +65,7 @@ def validation_results_df_to_string(validation_results):
 
 
 def validation(model, encoding, mascon_points, mascon_masses,
-               use_acc, asteroid_pk_path,  mascon_masses_nu=None, N=5000, N_integration=500000, batch_size=100, progressbar=True):
+               use_acc, asteroid_pk_path,  mascon_masses_nu=None, N=5000, N_integration=500000, batch_size=100, russell_points=3, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -79,6 +79,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         N (int, optional): Number of evaluations per altitude. Defaults to 5000.
         N_integration (int, optional): Number of integrations points to use. Defaults to 500000.
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
+        russell_points (int , optional): how many points should be sampled per altitude for russel style radial projection sampling. Defaults to 3.
         progressbar (bool, optional): Display a progress. Defaults to True.
 
     Returns:
@@ -111,7 +112,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
     # Low altitude
     torch.cuda.empty_cache()
     pred, labels, loss_values = [], [], []
-    target_sampler = get_target_point_sampler(50, method="radial_projection", bounds=[
+    target_sampler = get_target_point_sampler(russell_points, method="radial_projection", bounds=[
                                               0.0, 0.15625], limit_shape_to_asteroid=asteroid_pk_path)
 
     target_points = target_sampler().detach()
@@ -149,7 +150,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
     # High altitude
     torch.cuda.empty_cache()
     pred, labels, loss_values = [], [], []
-    target_sampler = get_target_point_sampler(50, method="radial_projection", bounds=[
+    target_sampler = get_target_point_sampler(russell_points, method="radial_projection", bounds=[
                                               0.15625, 0.3125], limit_shape_to_asteroid=asteroid_pk_path)
 
     target_points = target_sampler().detach()

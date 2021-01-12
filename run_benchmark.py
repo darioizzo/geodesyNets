@@ -31,20 +31,21 @@ def run(cfg, results_df):
                 for batch_size in cfg["training"]["batch_sizes"]:
                     for target_sample_method in cfg["model"]["target_point_samplers"]:
                         for activation in cfg["model"]["activation"]:
-                            print(
-                                f"\n ---------- RUNNING CONFIG -------------")
-                            print(
-                                f"|LR={cfg['training']['lr']}\t\t\tloss={loss.__name__}\t\tencoding={encoding().name}|")
-                            print(
-                                f"|target_sample={target_sample_method}\tactivation={str(activation)[:-2]}\t\tbatch_size={batch_size}|")
-                            print(
-                                f"--------------------------------------------")
-                            run_results = gravann.run_training(cfg, sample, loss,
-                                                               encoding(), batch_size,
-                                                               target_sample_method,
-                                                               activation)
-                            results_df = results_df.append(
-                                run_results, ignore_index=True)
+                            for omega in cfg["siren"]["omega"]:
+                                print(
+                                    f"\n ---------- RUNNING CONFIG -------------")
+                                print(
+                                    f"|LR={cfg['training']['lr']}\t\t\tloss={loss.__name__}\t\tencoding={encoding().name}|")
+                                print(
+                                    f"|target_sample={target_sample_method}\tactivation={str(activation)[:-2]}\t\tbatch_size={batch_size}|")
+                                print(
+                                    f"--------------------------------------------")
+                                run_results = gravann.run_training(cfg, sample, loss,
+                                                                   encoding(), batch_size,
+                                                                   target_sample_method,
+                                                                   activation, omega)
+                                results_df = results_df.append(
+                                    run_results, ignore_index=True)
         print("###############################################")
         print("#############       SAMPLE DONE     ###########")
         print("###############################################")

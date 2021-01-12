@@ -7,6 +7,7 @@ from collections import deque
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle as pk
+import time
 
 from ._losses import contrastive_loss, zero_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
 from ._mascon_labels import ACC_L, ACC_L_differential, U_L
@@ -137,7 +138,7 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     return loss, c, vision_loss
 
 
-def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation):
+def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation, omega):
     """Initializes params for the training run
 
     Args:
@@ -149,6 +150,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
         batch_size (int): Number of target points per batch
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
+        omega (float): Siren omega value
 
     Returns:
         model,early_stopper,optimizer,scheduler, target_sampler,vis_sampler,run_folder
@@ -163,14 +165,14 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     run_folder = cfg["output_folder"] + \
         sample.replace("/", "_") + \
         f"/LR={lr}_loss={loss_fn.__name__}_encoding={encoding.name}_" + \
-        f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}/"
+        f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}_omega={omega:.2}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
     early_stopper = EarlyStopping(save_folder=run_folder)
 
     # Init model
     model = init_network(encoding, n_neurons=100,
-                         activation=activation, model_type=cfg["model"]["type"], siren_omega=cfg["siren"]["omega"])
+                         activation=activation, model_type=cfg["model"]["type"], siren_omega=omega)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -193,7 +195,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     return model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder
 
 
-def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation):
+def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation, omega):
     """Runs a specific parameter configuration
     Args:
         cfg (dict): global run cfg 
@@ -203,10 +205,12 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         batch_size (int): Number of target points per batch
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
+        omega (float): Siren omega value
     """
+    start = time.time()
     # Initialize everything we need
     initialized_vars = _init_training_run(
-        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation)
+        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega)
     model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder = initialized_vars
 
     mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(
@@ -296,11 +300,14 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
 
     # Compute validation results
     val_res = validation_results_unpack_df(validation_results)
+
+    end = time.time()
+    runtime = end - start
     result_dictionary = {"Sample": sample,
                          "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                          "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
                          "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method, "Integration Points": cfg["integration"]["points"],
-                         "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
+                         "Runtime": runtime, "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
     results_df = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)
     return results_df

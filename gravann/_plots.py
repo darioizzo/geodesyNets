@@ -88,17 +88,21 @@ def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
     return mesh
 
 
-def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interactive=False):
+def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interactive=False, subdivisions=6, plot_each_it=10):
     """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
         cloud (torch tensor): The points that should be used to generate the mesh (3,N)
         distance_threshold (float): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into.
         use_top_k (int): the number of nearest neighbours to be used for distance.
+        subdivisions (int): mesh granularity (pick 4 to 7 or so).
+        plot_each_it (int): how often to plot.
         interactive (bool): Creates a separate window which you can use interactively.
+        subdivisions (int): mesh granularity (pick 4 to 7 or so).
+        plot_each_it (int): how often to plot.
     """
     mesh = create_mesh_from_cloud(cloud.cpu().numpy(
-    ), use_top_k=use_top_k, distance_threshold=distance_threshold, plot_each_it=-1)
+    ), use_top_k=use_top_k, distance_threshold=distance_threshold, plot_each_it=-1, subdivisions=subdivisions)
     plot_mesh(mesh, smooth_shading=True,
               show_edges=False, interactive=interactive)
     return mesh

@@ -136,16 +136,24 @@ def plot_mascon(mascon_points, mascon_masses=None, elev=45, azim=45, alpha=0.01,
         s (int): scale for the visualized masses
 
     """
-    x = mascon_points[:, 0].cpu()
-    y = mascon_points[:, 1].cpu()
-    z = mascon_points[:, 2].cpu()
+    if torch.is_tensor(mascon_points):
+        x = mascon_points[:, 0].cpu().numpy()
+        y = mascon_points[:, 1].cpu().numpy()
+        z = mascon_points[:, 2].cpu().numpy()
+    else:
+        x = np.array(mascon_points[:, 0])
+        y = np.array(mascon_points[:, 1])
+        z = np.array(mascon_points[:, 2])
 
     if s is None:
         if mascon_masses is None:
-            s = 1./len(mascon_points)
+            s = np.array([1./len(mascon_points)] * len(mascon_points))
             s = s/max(s)*200
         else:
-            s = mascon_masses.cpu() / sum(mascon_masses.cpu())
+            if torch.is_tensor(mascon_masses):
+                s = mascon_masses.cpu().numpy() / sum(mascon_masses.cpu().numpy())
+            else:
+                s = np.array(mascon_masses) / sum(np.array(mascon_masses))
             s = s/max(s)*200
 
     # And we plot it

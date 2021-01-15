@@ -88,17 +88,21 @@ def plot_model_mesh(model, encoding, interactive=False, rho_threshold=1.5e-2):
     return mesh
 
 
-def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interactive=False):
+def plot_point_cloud_mesh(cloud, distance_threshold=0.125, use_top_k=1, interactive=False, subdivisions=6, plot_each_it=10):
     """Display a mesh generated from a point cloud. Returns the mesh
 
     Args:
         cloud (torch tensor): The points that should be used to generate the mesh (3,N)
         distance_threshold (float): Distance threshold for the mesh generation algorithm. Use larger ones if mesh is broken up into.
         use_top_k (int): the number of nearest neighbours to be used for distance.
+        subdivisions (int): mesh granularity (pick 4 to 7 or so).
+        plot_each_it (int): how often to plot.
         interactive (bool): Creates a separate window which you can use interactively.
+        subdivisions (int): mesh granularity (pick 4 to 7 or so).
+        plot_each_it (int): how often to plot.
     """
     mesh = create_mesh_from_cloud(cloud.cpu().numpy(
-    ), use_top_k=use_top_k, distance_threshold=distance_threshold, plot_each_it=-1)
+    ), use_top_k=use_top_k, distance_threshold=distance_threshold, plot_each_it=-1, subdivisions=subdivisions)
     plot_mesh(mesh, smooth_shading=True,
               show_edges=False, interactive=interactive)
     return mesh
@@ -136,16 +140,24 @@ def plot_mascon(mascon_points, mascon_masses=None, elev=45, azim=45, alpha=0.01,
         s (int): scale for the visualized masses
 
     """
-    x = mascon_points[:, 0].cpu()
-    y = mascon_points[:, 1].cpu()
-    z = mascon_points[:, 2].cpu()
+    if torch.is_tensor(mascon_points):
+        x = mascon_points[:, 0].cpu().numpy()
+        y = mascon_points[:, 1].cpu().numpy()
+        z = mascon_points[:, 2].cpu().numpy()
+    else:
+        x = np.array(mascon_points[:, 0])
+        y = np.array(mascon_points[:, 1])
+        z = np.array(mascon_points[:, 2])
 
     if s is None:
         if mascon_masses is None:
-            s = 1./len(mascon_points)
+            s = np.array([1./len(mascon_points)] * len(mascon_points))
             s = s/max(s)*200
         else:
-            s = mascon_masses.cpu() / sum(mascon_masses.cpu())
+            if torch.is_tensor(mascon_masses):
+                s = mascon_masses.cpu().numpy() / sum(mascon_masses.cpu().numpy())
+            else:
+                s = np.array(mascon_masses) / sum(np.array(mascon_masses))
             s = s/max(s)*200
 
     # And we plot it

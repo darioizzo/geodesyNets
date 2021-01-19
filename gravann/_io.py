@@ -24,10 +24,13 @@ def load_sample(sample, use_differential=False):
     mascon_masses_u = torch.tensor(mascon_masses_u)
 
     if use_differential:
-        with open("mascons/"+sample[:-3]+"_nu.pk", "rb") as file:
-            _, mascon_masses_nu, _ = pk.load(file)
-        mascon_masses_nu = torch.tensor(mascon_masses_nu)
-        print("Loaded non-uniform model")
+        try:
+            with open("mascons/"+sample[:-3]+"_nu.pk", "rb") as file:
+                _, mascon_masses_nu, _ = pk.load(file)
+            mascon_masses_nu = torch.tensor(mascon_masses_nu)
+            print("Loaded non-uniform model")
+        except:
+            mascon_masses_nu = None
     else:
         mascon_masses_nu = None
 

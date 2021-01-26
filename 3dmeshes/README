@@ -6,5 +6,7 @@ Usage:
 with open("3dmeshes/Eros.pk", "rb") as f:
     points, triangles = pk.load(f)
 
-The files *_raw are direct exports from the original 3d model. They thus contain the mesh in some axis and in units.
+The files *_raw are direct exports from the original 3d model. They thus contain the mesh in some axis and in units
+(except for Hollow that is mascon generated and thus the meshes are derived from there directly. The raw files are thus
+only here for consistency as they are identical to the non raw ones)
 The files *_lp contain downsized models with 1/10 of the triangles.

@@ -318,11 +318,12 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     return results_df
 
 
-def load_model_run(folderpath):
+def load_model_run(folderpath, differential_training=False):
     """Will load a model, sample and cfg from a saved training run.
 
     Args:
         folderpath (str): Path to the folder containing the config.pk and model.mdl
+        differential_training (bool): Indicates if differential training was used. Defaults to False.
 
     Returns:
         model, encoding, sample, c, use_acc, mascon_points, mascon_masses_u, mascon_masses_nu
@@ -345,7 +346,7 @@ def load_model_run(folderpath):
 
     # if not differential, _nu masses will just be None
     mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(
-        sample, use_differential=True)
+        sample, use_differential=differential_training)
 
     c = params["c"].item()
 

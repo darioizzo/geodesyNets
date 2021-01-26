@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 
 name = "VALIDATION"
+differential_training = False
 
 # If possible enable CUDA
 gravann.enableCUDA()
@@ -20,9 +21,15 @@ sample_altitude_constant = {
     "Churyumov-Gerasimenko.pk": 0.5 * 5.0025703125 / 3.1266064453124995,
     "Eros.pk": 0.5 * 32.66218376159668 / 20.413864850997925,
     "Itokawa.pk": 0.5 * 0.5607019066810608 / 0.350438691675663,
+    "Hollow.pk": 0.8,
+    "Torus.pk": 0.8
 }
 
 root_folder = "results/validate/"
+
+root_folder = "results/validate_differential/"
+differential_training = True
+name = "VALIDATION_DIFF"
 
 # Find present models
 root_folder = root_folder.replace("\\", "/")
@@ -35,7 +42,7 @@ results_df = pd.DataFrame()
 for folder in folders:
     # Load run
     model, encoding, sample, c, use_acc, mascon_points, mascon_masses_u, mascon_masses_nu, cfg = gravann.load_model_run(
-        folder)
+        folder, differential_training)
 
     # Validate
     validation_results = gravann.validation(

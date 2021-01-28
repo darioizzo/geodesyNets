@@ -85,9 +85,9 @@ def validation(model, encoding, mascon_points, mascon_masses,
         def label_function(tp, mp, mm): return ACC_L_differential(
             tp, mp, mm, mascon_masses_nu)
 
-    loss_fns = [  # normalized_L1_loss, normalized_loss, normalized_relative_L2_loss,
-        normalized_relative_component_loss, RMSE, relRMSE]
-    cols = ["Altitude",  # "Normalized L1 Loss", "Normalized Loss", "Normalized Rel. L2 Loss",
+    loss_fns = [normalized_L1_loss,  # normalized_loss, normalized_relative_L2_loss,
+                normalized_relative_component_loss, RMSE, relRMSE]
+    cols = ["Altitude",  "Normalized L1 Loss",  # "Normalized Loss", "Normalized Rel. L2 Loss",
             "Normalized Relative Component Loss", "RMSE", "relRMSE"]
     results = pd.DataFrame(columns=cols)
 

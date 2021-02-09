@@ -65,7 +65,7 @@ def validation_results_df_to_string(validation_results):
 
 
 def validation(model, encoding, mascon_points, mascon_masses,
-               use_acc, asteroid_pk_path,  mascon_masses_nu=None, N=5000, N_integration=500000, batch_size=100, russell_points=3, progressbar=True):
+               use_acc, asteroid_pk_path,  mascon_masses_nu=None, N=5000, N_integration=500000, batch_size=100, russell_points=3, progressbar=True, c=1):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -81,12 +81,14 @@ def validation(model, encoding, mascon_points, mascon_masses,
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
         russell_points (int , optional): how many points should be sampled per altitude for russel style radial projection sampling. Defaults to 3.
         progressbar (bool, optional): Display a progress. Defaults to True.
+        c (float, optional): Adjustment constant,  required for differential training, not used for other trainings. Defaults to 1.
 
     Returns:
         pandas dataframe: Results as df
     """
     torch.cuda.empty_cache()
     fixRandomSeeds()
+    def prediction_adjustment(tp, mp, mm, x): return x
     if use_acc:
         label_function = ACC_L
         integrator = ACC_trap
@@ -96,8 +98,10 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
     if mascon_masses_nu is not None:
-        def label_function(tp, mp, mm): return ACC_L_differential(
-            tp, mp, mm, mascon_masses_nu)
+        def label_function(tp, mp, mm): return ACC_L(tp, mp, mascon_masses_nu)
+
+        def prediction_adjustment(
+            tp, mp, mm, x): return ACC_L(tp, mp, mm) + c * x
 
     loss_fns = [normalized_L1_loss, normalized_loss,
                 normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]
@@ -127,8 +131,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
         points = target_points[indices]
         labels.append(label_function(
             points, mascon_points, mascon_masses).detach())
-        pred.append(integrator(points, model, encoding, N=N_int,
-                               h=h, sample_points=integration_grid).detach())
+        prediction = integrator(points, model, encoding, N=N_int,
+                                h=h, sample_points=integration_grid).detach()
+        prediction = prediction_adjustment(
+            points, mascon_points, mascon_masses, prediction)
+        pred.append(prediction)
         if progressbar:
             pbar.update(batch_size)
 
@@ -160,8 +167,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
         points = target_points[indices]
         labels.append(label_function(
             points, mascon_points, mascon_masses).detach())
-        pred.append(integrator(points, model, encoding, N=N_int,
-                               h=h, sample_points=integration_grid).detach())
+        prediction = integrator(points, model, encoding, N=N_int,
+                                h=h, sample_points=integration_grid).detach()
+        prediction = prediction_adjustment(
+            points, mascon_points, mascon_masses, prediction)
+        pred.append(prediction)
         if progressbar:
             pbar.update(batch_size)
 
@@ -193,8 +203,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
             labels.append(label_function(
                 target_points, mascon_points, mascon_masses).detach())
 
-            pred.append(integrator(target_points, model, encoding, N=N_int,
-                                   h=h, sample_points=integration_grid).detach())
+            prediction = integrator(target_points, model, encoding, N=N_int,
+                                    h=h, sample_points=integration_grid).detach()
+            prediction = prediction_adjustment(
+                target_points, mascon_points, mascon_masses, prediction)
+            pred.append(prediction)
 
             if progressbar:
                 pbar.update(batch_size)

@@ -161,7 +161,7 @@ def plot_mascon(mascon_points, mascon_masses=None, elev=45, azim=45, alpha=0.01,
             s = s/max(s)*200
 
     # And we plot it
-    fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
+    fig = plt.figure(figsize=(6, 5), dpi=100, facecolor='white')
     if views_2d:
         ax = fig.add_subplot(221, projection='3d')
     else:
@@ -223,7 +223,7 @@ def plot_mascon(mascon_points, mascon_masses=None, elev=45, azim=45, alpha=0.01,
         ax4.spines['bottom'].set_color('red')
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
 
 
 def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c=1.):
@@ -420,7 +420,7 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax4.spines['left'].set_color('red')
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
 
 
 def plot_gradients_per_layer(model):
@@ -576,7 +576,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     ax4.set_aspect('equal', 'box')
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
 
 
 def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=None, N=2500, crop_p=1e-2, s=100, save_path=None,
@@ -660,6 +660,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[: N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[: N]  # concat and discard after N
 
+    # levels = np.linspace(0, 2.7, 10)
     levels = np.linspace(np.min(rho.cpu().detach().numpy()),
                          np.max(rho.cpu().detach().numpy()), 10)
 
@@ -677,10 +678,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=45., azim=45.)
-    ax.tick_params(labelsize=7)
-    ax.set_xlabel("X", fontsize=9)
-    ax.set_ylabel("Y", fontsize=9)
-    ax.set_zlabel("Z", fontsize=9)
+    ax.tick_params(labelsize=6)
+    ax.set_xlabel("X", fontsize=8)
+    ax.set_ylabel("Y", fontsize=8)
+    ax.set_zlabel("Z", fontsize=8)
 
     # X Rectangle
     ax.plot_wireframe(np.asarray([[0, 0], [0, 0]])+offset, np.asarray([[1, 1], [-1, -1]]),
@@ -706,14 +707,14 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
 
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
-    ax2.tick_params(labelsize=7, color="green")
-    ax2.set_xlabel("X", fontsize=9)
-    ax2.set_ylabel("Y", fontsize=9)
+    ax2.tick_params(labelsize=6, color="green")
+    ax2.set_xlabel("X", fontsize=8)
+    ax2.set_ylabel("Y", fontsize=8)
     ax2.spines['bottom'].set_color('green')
     ax2.spines['top'].set_color('green')
     ax2.spines['right'].set_color('green')
     ax2.spines['left'].set_color('green')
-    ax2.set_title("X-Y cross section (green slice)", fontsize=7)
+    ax2.set_title("X-Y cross section (green slice)", fontsize=8)
     ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(223)
@@ -727,10 +728,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
 
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
-    ax3.set_xlabel("X", fontsize=9)
-    ax3.set_ylabel("Z", fontsize=9)
-    ax3.set_title("X-Z cross section (blue slice)", fontsize=7)
-    ax3.tick_params(labelsize=7, color="blue")
+    ax3.set_xlabel("X", fontsize=8)
+    ax3.set_ylabel("Z", fontsize=8)
+    ax3.set_title("X-Z cross section (blue slice)", fontsize=8)
+    ax3.tick_params(labelsize=6, color="blue")
     ax3.spines['bottom'].set_color('blue')
     ax3.spines['top'].set_color('blue')
     ax3.spines['right'].set_color('blue')
@@ -747,10 +748,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
                 s=normalized_masses[mask], alpha=mascon_alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
-    ax4.set_xlabel("Y", fontsize=9)
-    ax4.set_ylabel("Z", fontsize=9)
-    ax4.set_title("Y-Z cross section (red slice)", fontsize=7)
-    ax4.tick_params(labelsize=7, color="red")
+    ax4.set_xlabel("Y", fontsize=8)
+    ax4.set_ylabel("Z", fontsize=8)
+    ax4.set_title("Y-Z cross section (red slice)", fontsize=8)
+    ax4.tick_params(labelsize=6, color="red")
     ax4.spines['bottom'].set_color('red')
     ax4.spines['top'].set_color('red')
     ax4.spines['right'].set_color('red')
@@ -760,7 +761,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     plt.tight_layout()
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
 
     return ax
 
@@ -900,8 +901,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         cb.set_label('Relative Error', rotation=270, labelpad=15)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
-    ax.set_xlabel(plane[0], fontsize=9)
-    ax.set_ylabel(plane[1], fontsize=9)
+    ax.set_xlabel(plane[0], fontsize=8)
+    ax.set_ylabel(plane[1], fontsize=8)
     ax.set_title(cut_dim_name + " < 0")
     ax.tick_params(labelsize=7)
     ax.set_aspect('equal', 'box')
@@ -925,8 +926,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         cb.set_label('Relative Error', rotation=270, labelpad=15)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
-    ax.set_xlabel(plane[0], fontsize=9)
-    ax.set_ylabel(plane[1], fontsize=9)
+    ax.set_xlabel(plane[0], fontsize=8)
+    ax.set_ylabel(plane[1], fontsize=8)
     ax.set_title(cut_dim_name + " > 0")
     ax.tick_params(labelsize=7)
     ax.set_aspect('equal', 'box')
@@ -939,7 +940,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     plt.tight_layout()
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
+        plt.close()
 
     return ax, label_values_right
 
@@ -1029,17 +1031,17 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         p = ax.contour(X, Y, Z, cmap=cmap, levels=levels)
         norm = mpl.colors.BoundaryNorm(levels, cmap.N)
         cb = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
-        cb.ax.tick_params(labelsize=7)
-    cb.set_label('Density', rotation=270, labelpad=15)
+    cb.ax.tick_params(labelsize=6)
+    # cb.set_label('Density', rotation=270, labelpad=15, fontsize=8)
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
 
     if axes is None:
         return ax
 
 
-def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=None, levels=10, integration_points=10000):
+def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=None, levels=10, integration_points=10000, scale=1):
     """Takes a mass density model and plots the gravity potential contours 
 
     Args:
@@ -1050,10 +1052,12 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
         save_path (str, optional): Pass to store plot, if none will display. Defaults to None.
         levels (int): number of contour lines to plot. Defaults to 10.
         integration_points (int): number of points to use in the numerical integration. Defaults to 10000
-
+        scale (float): scale of plotted dims. Defaults to 1 which results in [-2,2]^3 domain.
     """
+    domain = scale*np.asarray([-2, 2])
     # Builds a 2D grid
-    e1, e2 = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    e1, e2 = np.meshgrid(np.linspace(domain[0], domain[1], N),
+                         np.linspace(domain[0], domain[1], N))
     e1 = np.reshape(e1, (-1,))
     e2 = np.reshape(e2, (-1,))
     zeros = np.zeros(N**2)
@@ -1073,14 +1077,15 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
                            verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
     Z = potential.reshape((N, N)).cpu().detach().numpy()
-    X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    X, Y = np.meshgrid(np.linspace(
+        domain[0], domain[1], N), np.linspace(domain[0], domain[1], N))
     ax.contourf(X, Y, Z, cmap=cmap, levels=levels)
     mp = mascon_points.cpu().detach().numpy()
     ax.plot(mp[:, 0], mp[:, 1], '.', c='k', alpha=0.02)
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_xlim([-2, 2])
-    ax.set_ylim([-2, 2])
+    ax.set_xlim(domain)
+    ax.set_ylim(domain)
     ax.set_aspect('equal', 'box')
     ax.spines['left'].set_color('green')
     ax.spines['right'].set_color('green')
@@ -1097,14 +1102,15 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
                            verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
     Z = potential.reshape((N, N)).cpu().detach().numpy()
-    X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    X, Y = np.meshgrid(np.linspace(
+        domain[0], domain[1], N), np.linspace(domain[0], domain[1], N))
     ax_y.contourf(X, Y, Z, cmap=cmap, levels=levels)
     mp = mascon_points.cpu().detach().numpy()
     ax_y.plot(mp[:, 0], mp[:, 2], '.', c='k', alpha=0.02)
     ax_y.set_xticks([])
     ax_y.set_yticks([])
-    ax_y.set_xlim([-2, 2])
-    ax_y.set_ylim([-2, 2])
+    ax_y.set_xlim(domain)
+    ax_y.set_ylim(domain)
     ax_y.set_aspect('equal', 'box')
     ax_y.spines['left'].set_color('blue')
     ax_y.spines['right'].set_color('blue')
@@ -1121,14 +1127,15 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     potential = U_trap_opt(target_points, model, encoding=encoding, N=integration_points,
                            verbose=False, noise=1e-5, sample_points=None, h=None, domain=None)
     Z = potential.reshape((N, N)).cpu().detach().numpy()
-    X, Y = np.meshgrid(np.linspace(-2, 2, N), np.linspace(-2, 2, N))
+    X, Y = np.meshgrid(np.linspace(
+        domain[0], domain[1], N), np.linspace(domain[0], domain[1], N))
     ax_x.contourf(X, Y, Z, cmap=cmap, levels=levels)
     mp = mascon_points.cpu().detach().numpy()
     ax_x.plot(mp[:, 1], mp[:, 2], '.', c='k', alpha=0.02)
     ax_x.set_xticks([])
     ax_x.set_yticks([])
-    ax_x.set_xlim([-2, 2])
-    ax_x.set_ylim([-2, 2])
+    ax_x.set_xlim(domain)
+    ax_x.set_ylim(domain)
     ax_x.set_aspect('equal', 'box')
     ax_x.spines['left'].set_color('red')
     ax_x.spines['right'].set_color('red')
@@ -1136,6 +1143,6 @@ def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=Non
     ax_x.spines['bottom'].set_color('red')
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=150)
+        plt.savefig(save_path, dpi=300)
 
     return ax

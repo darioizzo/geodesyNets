@@ -1,5 +1,5 @@
-name = "hollow_differential_training"
-cuda_devices = "2"
+name = "non_uniform_training"
+cuda_devices = "0"
 plotting_points = 2500
 sample_path = "mascons/"
 samples = [                                         
@@ -7,7 +7,10 @@ samples = [
     # "Churyumov-Gerasimenko.pk",
     # "Itokawa.pk", #For differential training enable the flag in the training section
     # "Bennu.pk", #For differential training enable the flag in the training section
-    "Hollow.pk", #For differential training enable the flag in the training section
+    # "Hollow.pk", #For differential training enable the flag in the training section
+    "Itokawa_nu.pk",
+    "Bennu_nu.pk", 
+    "Hollow_nu.pk", 
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
@@ -23,8 +26,8 @@ samples = [
 [model]
 activation = [
     #"Sigmoid",
-    # "Abs",
-    "Tanh",
+    "Abs",
+    # "Tanh",
 ]
 encoding =  [                           
     # "directional_encoding",
@@ -59,6 +62,6 @@ losses = [
     # "contrastive_loss"
 ]
 visual_loss = false
-differential_training=true
+differential_training=false
 validation_points=10000
 

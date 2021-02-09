@@ -20,6 +20,10 @@ from ._validation import validation, validation_results_unpack_df
 from .networks._siren import Siren
 from .networks._nerf import NERF
 
+# Required for loading runs
+from .networks._abs_layer import AbsLayer
+from ._encodings import *
+
 
 def _weights_init(m):
     """Network initialization scheme (note that if xavier uniform is used all outputs will start at, roughly 0.5)
@@ -312,3 +316,43 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     results_df = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)
     return results_df
+
+
+def load_model_run(folderpath, differential_training=False):
+    """Will load a model, sample and cfg from a saved training run.
+
+    Args:
+        folderpath (str): Path to the folder containing the config.pk and model.mdl
+        differential_training (bool): Indicates if differential training was used. Defaults to False.
+
+    Returns:
+        model, encoding, sample, c, use_acc, mascon_points, mascon_masses_u, mascon_masses_nu
+    """
+    # Load run parameters
+    with open(folderpath + "config.pk", "rb") as file:
+        params = pk.load(file)
+
+    sample = params["Sample"]
+    encoding = globals()[params["Encoding"]]()
+
+    if params["Activation"] == "AbsLayer":
+        activation = AbsLayer()
+    else:
+        activation = getattr(torch.nn, params["Activation"])()
+
+    model = init_network(
+        encoding, model_type=params["Model"], activation=activation)
+    model.load_state_dict(torch.load(folderpath + "best_model.mdl"))
+
+    # if not differential, _nu masses will just be None
+    mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(
+        sample, use_differential=differential_training)
+
+    c = params["c"].item()
+
+    use_acc = True if params["Type"] == "ACC" else False
+
+    print("Successfully loaded")
+    print(params)
+
+    return model, encoding, sample, c, use_acc, mascon_points, mascon_masses_u, mascon_masses_nu, params

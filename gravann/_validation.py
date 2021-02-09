@@ -74,6 +74,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
     """
     torch.cuda.empty_cache()
     fixRandomSeeds()
+    # identity for non-differential
     def prediction_adjustment(tp, mp, mm, x): return x
     if use_acc:
         label_function = ACC_L
@@ -84,8 +85,10 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
     if mascon_masses_nu is not None:
+        # Labels for differential need to be computed on non-uniform ground truth
         def label_function(tp, mp, mm): return ACC_L(tp, mp, mascon_masses_nu)
 
+        # Predictions for differential need to be adjusted with acceleration from uniform ground truth
         def prediction_adjustment(
             tp, mp, mm, x): return ACC_L(tp, mp, mm) + c * x
 

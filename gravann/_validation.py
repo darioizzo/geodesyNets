@@ -85,6 +85,8 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
     if mascon_masses_nu is not None:
+        if c == 1:
+            raise ValueError("c needs to passed for differential training.")
         # Labels for differential need to be computed on non-uniform ground truth
         def label_function(tp, mp, mm): return ACC_L(tp, mp, mascon_masses_nu)
 

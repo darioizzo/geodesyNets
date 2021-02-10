@@ -660,7 +660,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     points = torch.cat(points, dim=0)[: N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[: N]  # concat and discard after N
 
-    # levels = np.linspace(0, 2.7, 10)
+    # levels = np.linspace(0, np.max(rho.cpu().detach().numpy()), 10)
     levels = np.linspace(np.min(rho.cpu().detach().numpy()),
                          np.max(rho.cpu().detach().numpy()), 10)
 

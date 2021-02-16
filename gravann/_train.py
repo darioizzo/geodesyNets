@@ -281,6 +281,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     validation_results = validation(
         model, encoding, mascon_points, mascon_masses_u,
         cfg["model"]["use_acceleration"], "3dmeshes/" + sample,
+        mascon_masses_nu=mascon_masses_nu,
         N_integration=500000, N=cfg["training"]["validation_points"])
 
     save_results(loss_log, weighted_average_log,

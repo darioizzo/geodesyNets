@@ -664,8 +664,8 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     levels = np.linspace(np.min(rho.cpu().detach().numpy()),
                          np.max(rho.cpu().detach().numpy()), 10)
 
-    fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
-    ax = fig.add_subplot(221, projection='3d')
+    fig = plt.figure(figsize=(3, 10), dpi=150, facecolor='white')
+    ax = fig.add_subplot(411, projection='3d')
     # ax.set_facecolor(backcolor)
     rejection_col = 'yellow'
     mascon_color = "green"
@@ -694,9 +694,9 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
                       np.asarray([[0, 0], [0, 0]])+offset, color="green", linestyle="--", alpha=0.75)
     ax.set_title("3D View", fontsize=7)
 
-    mascon_slice_thickness = 0.05
+    mascon_slice_thickness = 0.01
 
-    ax2 = fig.add_subplot(222)
+    ax2 = fig.add_subplot(412)
     # ax2.set_facecolor(backcolor)
     mask = torch.logical_and(z - offset < mascon_slice_thickness,
                              z - offset > -mascon_slice_thickness)
@@ -717,7 +717,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.set_title("X-Y cross section (green slice)", fontsize=8)
     ax2.set_aspect('equal', 'box')
 
-    ax3 = fig.add_subplot(223)
+    ax3 = fig.add_subplot(413)
     # ax3.set_facecolor(backcolor)
     mask = torch.logical_and(y - offset < mascon_slice_thickness,
                              y - offset > -mascon_slice_thickness)
@@ -738,7 +738,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.spines['left'].set_color('blue')
     ax3.set_aspect('equal', 'box')
 
-    ax4 = fig.add_subplot(224)
+    ax4 = fig.add_subplot(414)
     # ax4.set_facecolor(backcolor)
     mask = torch.logical_and(x - offset < mascon_slice_thickness,
                              x - offset > -mascon_slice_thickness)
@@ -761,7 +761,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     plt.tight_layout()
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=300)
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
 
     return ax
 
@@ -1032,7 +1032,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         norm = mpl.colors.BoundaryNorm(levels, cmap.N)
         cb = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
     cb.ax.tick_params(labelsize=6)
-    # cb.set_label('Density', rotation=270, labelpad=15, fontsize=8)
+    cb.set_label('Density', rotation=270, labelpad=15, fontsize=8)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300)

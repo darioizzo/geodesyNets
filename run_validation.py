@@ -5,8 +5,25 @@ import glob
 import pandas as pd
 import numpy as np
 
-name = "VALIDATION"
-differential_training = False
+# name = "VALIDATION"
+# root_folder = "results/validate/"
+# differential_training = False
+# russell_points = 3
+
+# name = "VALIDATION_NU"
+# root_folder = "results/validate_nu/"
+# differential_training = False
+# russell_points = 3
+
+# name = "VALIDATION_EROS"
+# root_folder = "results/validate_eros/"
+# differential_training = False
+# russell_points = 50
+
+root_folder = "results/validate_differential_siren/"
+differential_training = True
+name = "VALIDATION_DIFF"
+russell_points = 3
 
 # If possible enable CUDA
 gravann.enableCUDA()
@@ -18,18 +35,16 @@ print("Will use device ", device)
 sampling_altitudes = np.asarray([0.05, 0.1, 0.25])
 sample_altitude_constant = {
     "Bennu.pk": 0.5 * 0.5634379088878632 / 0.3521486930549145,
+    "Bennu_nu.pk": 0.5 * 0.5634379088878632 / 0.3521486930549145,
     "Churyumov-Gerasimenko.pk": 0.5 * 5.0025703125 / 3.1266064453124995,
     "Eros.pk": 0.5 * 32.66218376159668 / 20.413864850997925,
     "Itokawa.pk": 0.5 * 0.5607019066810608 / 0.350438691675663,
+    "Itokawa_nu.pk": 0.5 * 0.5607019066810608 / 0.350438691675663,
     "Hollow.pk": 0.8,
+    "Hollow_nu.pk": 0.8,
     "Torus.pk": 0.8
 }
 
-root_folder = "results/validate/"
-
-root_folder = "results/validate_differential/"
-differential_training = True
-name = "VALIDATION_DIFF"
 
 # Find present models
 root_folder = root_folder.replace("\\", "/")
@@ -51,8 +66,9 @@ for folder in folders:
         sampling_altitudes,
         N_integration=500000,
         N=10000,
-        russell_points=3,
-        mascon_masses_nu=mascon_masses_nu
+        russell_points=russell_points,
+        mascon_masses_nu=mascon_masses_nu,
+        c=c
     )
 
     # Compute validation results

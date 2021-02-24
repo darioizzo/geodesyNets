@@ -20,14 +20,14 @@ def load_sample(sample, use_differential=False):
     with open("mascons/" + sample, "rb") as file:
         mascon_points, mascon_masses_u, name = pk.load(file)
 
-    mascon_points = torch.tensor(mascon_points)
-    mascon_masses_u = torch.tensor(mascon_masses_u)
+    mascon_points = torch.tensor(mascon_points).cuda()
+    mascon_masses_u = torch.tensor(mascon_masses_u).cuda()
 
     if use_differential:
         try:
             with open("mascons/"+sample[:-3]+"_nu.pk", "rb") as file:
                 _, mascon_masses_nu, _ = pk.load(file)
-            mascon_masses_nu = torch.tensor(mascon_masses_nu)
+            mascon_masses_nu = torch.tensor(mascon_masses_nu).cuda()
             print("Loaded non-uniform model")
         except:
             mascon_masses_nu = None

@@ -14,6 +14,9 @@ from ._losses import normalized_loss, mse_loss, normalized_L1_loss, contrastive_
 from ._integration import ACC_ld, ACC_trap, U_mc, U_ld, U_trap_opt, rho_trap
 from ._integration import sobol_points, compute_integration_grid
 
+# Methods to load mascons etc.
+from ._io import load_sample
+
 # Importing misc methods for 3D graphics
 from ._hulls import alpha_shape, ray_triangle_intersect, rays_triangle_intersect, is_outside, is_inside
 

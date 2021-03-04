@@ -1,13 +1,13 @@
-name = "hollow_differential_training"
-cuda_devices = "2"
+name = "differential_training_v2"
+cuda_devices = "1"
 plotting_points = 2500
 sample_path = "mascons/"
 samples = [                                         
     # "Eros.pk",
     # "Churyumov-Gerasimenko.pk",
-    # "Itokawa.pk", #For differential training enable the flag in the training section
-    # "Bennu.pk", #For differential training enable the flag in the training section
-    "Hollow.pk", #For differential training enable the flag in the training section
+    "Itokawa.pk", #For differential training enable the flag in the training section
+    "Bennu.pk", #For differential training enable the flag in the training section
+    "Hollow2.pk", #For differential training enable the flag in the training section
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
@@ -38,6 +38,8 @@ target_point_samplers = [
 sample_domain = [0.0,1.0]
 use_acceleration = true
 type = "siren" # either "siren" , "default", "nerf"
+hidden_layers = [9]
+n_neurons = [100]
 
 [siren]
 omega = [30.0]
@@ -48,13 +50,13 @@ limit_domain=false
 domain = [[-1.0,1.0],[-1.0,1.0],[-1.0,1.0]]
 
 [training]
-iterations = 10000
+iterations = 20000
 batch_sizes = [1000]
 lr = 1e-4
 losses = [
     # "mse_loss",
-    "normalized_loss",
-    "normalized_sqrt_L1_loss",
+    # "normalized_loss",
+    # "normalized_sqrt_L1_loss",
     "normalized_L1_loss",
     # "contrastive_loss"
 ]

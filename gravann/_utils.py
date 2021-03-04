@@ -106,7 +106,7 @@ class EarlyStopping():
     """A rudimentary implementation of callback that tells you when to early stop
     """
 
-    def __init__(self, save_folder, patience=500, warmup=3000):
+    def __init__(self, save_folder, patience=2000, warmup=3000):
         """Rudimentary EarlyStopping implementation
 
         Args:

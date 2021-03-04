@@ -164,8 +164,9 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     # Create folder for this specific run
     run_folder = cfg["output_folder"] + \
         sample.replace("/", "_") + \
-        f"/LR={lr}_loss={loss_fn.__name__}_encoding={encoding.name}_" + \
-        f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}_omega={omega:.2}/"
+        f"/LR={lr}_loss={loss_fn.__name__}_ENC={encoding.name}_" + \
+        f"BS={batch_size}_target_sample={target_sample_method}_ACT={str(activation)[:-2]}_omega={omega:.2}" + \
+        f"_layers={hidden_layers}_neurons={n_neurons}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
     early_stopper = EarlyStopping(save_folder=run_folder)

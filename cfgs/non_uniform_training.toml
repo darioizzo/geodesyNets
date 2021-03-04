@@ -41,6 +41,8 @@ target_point_samplers = [
 sample_domain = [0.0,1.0]
 use_acceleration = true
 type = "siren" # either "siren" , "default", "nerf"
+hidden_layers = [9]
+n_neurons = [100]
 
 [siren]
 omega = [30.0]

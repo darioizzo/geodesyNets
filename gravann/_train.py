@@ -296,6 +296,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     # store run config
     cfg_dict = {"Sample": sample, "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                 "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
+                "n_neurons": cfg["model"]["n_neurons"], "hidden_layers": cfg["model"]["hidden_layers"],
                 "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method,
                 "Integration Points": cfg["integration"]["points"], "Vision Loss": cfg["training"]["visual_loss"], "c": c}
 
@@ -339,8 +340,12 @@ def load_model_run(folderpath, differential_training=False):
     else:
         activation = getattr(torch.nn, params["Activation"])()
 
-    model = init_network(
-        encoding, model_type=params["Model"], activation=activation)
+    if "n_neurons" in params and "hidden_layers" in params: # newer cfgs have these entries
+        model = init_network(
+            encoding, model_type=params["Model"], activation=activation, n_neurons=params["n_neurons"], hidden_layers=params["hidden_layers"])
+    else:
+        model = init_network(
+            encoding, model_type=params["Model"], activation=activation)
     model.load_state_dict(torch.load(folderpath + "best_model.mdl"))
 
     # if not differential, _nu masses will just be None

@@ -143,16 +143,21 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
     points_at_altitude = centers + altitude * mesh['Normals']
 
     if plot_normals:
-        mesh.plot()
+        # mesh.plot()
+        pv.set_plot_theme("document")
         plotter = pv.Plotter()
         point_cloud = pv.PolyData(centers)
         point_cloud["vectors"] = mesh['Normals']
         arrows = point_cloud.glyph(
-            orient='vectors', scale=True, factor=0.1,)
-        plotter.add_mesh(arrows, color='lightblue')
-        plotter.add_mesh(points_at_altitude, color='red')
+            orient='vectors', scale=True, factor=0.1)
+        plotter.add_mesh(mesh, color=[0.2, 0.2, 0.2], lighting=True,
+                         smooth_shading=False, show_edges=True, edge_color=[0.25, 0.25, 0.25])
+        plotter.add_mesh(arrows, opacity=1.0, color='lightblue')
+        plotter.add_mesh(points_at_altitude, style="points",
+                         color='red', point_size=4, render_points_as_spheres=True)
         plotter.show_grid()
-        plotter.show()
+        # plotter.show()
+        plotter.show(screenshot="figures/sampler.png", window_size=[1200, 800])
 
     # Discard points that are too close (or too far)
     eps = 1e-4  # maximum altitude error

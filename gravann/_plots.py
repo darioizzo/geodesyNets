@@ -978,6 +978,8 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         # Load asteroid triangles
         with open(add_shape_base_value, "rb") as file:
             mesh_vertices, mesh_triangles = pk.load(file)
+        triangles = unpack_triangle_mesh(
+            np.asarray(mesh_vertices), mesh_triangles)
 
     # The cross product between the vertical and the desired direction ...
     section = section / np.linalg.norm(section)
@@ -1004,10 +1006,9 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
 
     # Add 1 for points inside asteroid (for differential training / models)
     if add_shape_base_value is not None:
-        outside_mask = np.invert(
-            is_outside(newp, np.asarray(mesh_vertices),
-                       np.asarray(mesh_triangles)))
-        rho += torch.unsqueeze(torch.tensor(outside_mask).float()
+        outside_mask = torch.bitwise_not(
+            is_outside_torch(inp, triangles))
+        rho += torch.unsqueeze(outside_mask.float()
                                * add_const_density, 1)
 
     Z = rho.reshape((N, N)).cpu().detach().numpy()

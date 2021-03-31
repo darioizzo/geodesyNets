@@ -18,7 +18,7 @@ from ._integration import sobol_points, compute_integration_grid
 from ._io import load_sample
 
 # Importing misc methods for 3D graphics
-from ._hulls import alpha_shape, ray_triangle_intersect, rays_triangle_intersect, is_outside, is_inside
+from ._hulls import alpha_shape, ray_triangle_intersect, rays_triangle_intersect, is_outside, is_inside, is_outside_torch
 
 # Importing the plots
 from ._plots import plot_mascon, plot_model_grid, plot_model_rejection, plot_model_contours, plot_potential_contours
@@ -44,7 +44,7 @@ from ._train import init_network, train_on_batch, run_training, load_model_run
 from .networks._abs_layer import AbsLayer
 
 # Import utility functions
-from ._utils import max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box, EarlyStopping
+from ._utils import unpack_triangle_mesh, max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box, EarlyStopping
 
 # Set main device by default to cpu if no other choice was made before
 if "TORCH_DEVICE" not in os.environ:

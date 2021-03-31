@@ -201,6 +201,8 @@ def is_outside_torch(points, triangles):
         torch.tensor of boolean values determining whether the points are inside
     """
     counter = torch.zeros([len(points)], device=os.environ["TORCH_DEVICE"])
+    # Note that this can lead to horrible singularities if the mesh has points orthogonal
+    # to this and target points have 0 coordinates as well
     direction = torch.tensor([0., 0., 1.], device=os.environ["TORCH_DEVICE"])
     v0, v1, v2 = triangles
     for idx, point in enumerate(points):
@@ -222,6 +224,8 @@ def is_outside(points, mesh_vertices, mesh_triangles):
         np.array of boolean values determining whether the points are inside
     """
     counter = np.array([0]*len(points))
+    # Note that this can lead to horrible singularities if the mesh has points orthogonal
+    # to this and target points have 0 coordinates as well
     direction = np.array([0, 0, 1])
     for t in mesh_triangles:
         counter += rays_triangle_intersect(

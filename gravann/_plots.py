@@ -766,7 +766,8 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     return ax
 
 
-def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY", altitude=0.1, save_path=None, c=1., N=5000, logscale=False):
+def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY",
+                                   altitude=0.1, save_path=None, c=1., N=5000, logscale=False, differential=False, mascon_masses_nu=None):
     """Plots the relative error of the computed acceleration between mascon model and neural network
 
     Args:
@@ -781,7 +782,8 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
         c (float, optional): Normalization constant. Defaults to 1.
         N (int, optional): Number of points to sample. Defaults to 5000.
         logscale (bool, optional): Logscale errors. Defaults to False.
-
+        differential (bool,optional): Indicates if differential training was used, will then use appropriate label functions. Defaults to False.
+        mascon_masses_nu (torch.tensor): non-uniform asteroid masses. Pass if using differential training
     Raises:
         ValueError: On wrong input
 
@@ -832,14 +834,29 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     # Compute accelerations in left points, then right points
     # for both network and mascon model
     batch_size = 100
+    label_function = ACC_L
+    integrator = ACC_ld
+
+    def prediction_adjustment(tp, mp, mm): return integrator(
+        tp, model, encoding, N=200000)*c
+
+    if differential:
+        # Labels for differential need to be computed on non-uniform ground truth
+        def label_function(tp, mp, mm): return ACC_L(tp, mp, mascon_masses_nu)
+
+        # Predictions for differential need to be adjusted with acceleration from uniform ground truth
+
+        def prediction_adjustment(
+            tp, mp, mm): return ACC_L(tp, mp, mm) + c * integrator(tp, model, encoding, N=200000)
+
     for idx in range((len(points_left) // batch_size)+1):
         indices = list(range(idx*batch_size,
                              np.minimum((idx+1)*batch_size, len(points_left))))
 
         label_values_left.append(
-            ACC_L(points_left[indices], mascon_points, mascon_masses).detach())
+            label_function(points_left[indices], mascon_points, mascon_masses).detach())
         model_values_left.append(
-            (ACC_ld(points_left[indices], model, encoding, N=200000)*c).detach())
+            prediction_adjustment(points_left[indices], mascon_points, mascon_masses).detach())
 
         torch.cuda.empty_cache()
 
@@ -848,9 +865,9 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
                              np.minimum((idx+1)*batch_size, len(points_right))))
 
         label_values_right.append(
-            ACC_L(points_right[indices], mascon_points, mascon_masses).detach())
+            label_function(points_right[indices], mascon_points, mascon_masses).detach())
         model_values_right.append(
-            (ACC_ld(points_right[indices], model, encoding, N=200000)*c).detach())
+            prediction_adjustment(points_right[indices], mascon_points, mascon_masses).detach())
 
         torch.cuda.empty_cache()
 

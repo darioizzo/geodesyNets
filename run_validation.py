@@ -67,8 +67,7 @@ for folder in folders:
         N_integration=500000,
         N=10000,
         russell_points=russell_points,
-        mascon_masses_nu=mascon_masses_nu,
-        c=c
+        mascon_masses_nu=mascon_masses_nu
     )
 
     # Compute validation results

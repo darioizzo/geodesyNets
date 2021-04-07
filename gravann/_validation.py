@@ -10,7 +10,7 @@ from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 from ._utils import fixRandomSeeds
 
 
-def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
+def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_masses_nu=None, use_acc=True):
     """Computes the current c constant for a model.
 
     Args:
@@ -18,14 +18,20 @@ def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
         encoding (encoding): encoding to use for the points
         mascon_points (torch.tensor): asteroid mascon points
         mascon_masses (torch.tensor): asteroid mascon masses
+        mascon_masses_nu (torch.tensor): asteroid mascon masses
         use_acc (bool): if acceleration should be used (otherwise potential)
     """
     targets_point_sampler = get_target_point_sampler(
-        500, method="spherical", bounds=[1.0, 1.1])
+        1000, method="spherical", bounds=[0.81, 1.0])
     target_points = targets_point_sampler()
     if use_acc:
-        labels = ACC_L(target_points, mascon_points, mascon_masses)
-        predicted = ACC_trap(target_points, model, encoding, N=100000)
+        if mascon_masses_nu == None:
+            labels = ACC_L(target_points, mascon_points, mascon_masses)
+            predicted = ACC_trap(target_points, model, encoding, N=100000)
+        else:
+            labels = ACC_L_differential(
+                target_points, mascon_points, mascon_masses, mascon_masses_nu)
+            predicted = ACC_trap(target_points, model, encoding, N=100000)
     else:
         labels = U_L(target_points, mascon_points, mascon_masses)
         predicted = U_trap_opt(target_points, model, encoding, N=100000)
@@ -50,7 +56,7 @@ def validation_results_unpack_df(validation_results):
 def validation(model, encoding, mascon_points, mascon_masses,
                use_acc, asteroid_pk_path,  mascon_masses_nu=None,
                N=5000, N_integration=500000, sampling_altitudes=[0.05, 0.1, 0.25],
-               batch_size=100, russell_points=3, progressbar=True, c=1):
+               batch_size=100, russell_points=3, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -67,7 +73,6 @@ def validation(model, encoding, mascon_points, mascon_masses,
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
         russell_points (int , optional): how many points should be sampled per altitude for russel style radial projection sampling. Defaults to 3.
         progressbar (bool, optional): Display a progress. Defaults to True.
-        c (float, optional): Adjustment constant,  required for differential training, not used for other trainings. Defaults to 1.
 
     Returns:
         pandas dataframe: Results as df
@@ -85,8 +90,8 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
     if mascon_masses_nu is not None:
-        if c == 1:
-            raise ValueError("c needs to passed for differential training.")
+        c = compute_c_for_model(
+            model, encoding, mascon_points, mascon_masses, mascon_masses_nu, use_acc=use_acc)
         # Labels for differential need to be computed on non-uniform ground truth
         def label_function(tp, mp, mm): return ACC_L(tp, mp, mascon_masses_nu)
 

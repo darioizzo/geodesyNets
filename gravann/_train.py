@@ -334,6 +334,7 @@ def load_model_run(folderpath, differential_training=False):
 
     sample = params["Sample"]
     encoding = globals()[params["Encoding"]]()
+    omega = float(folderpath.split("omega=")[1].split("/")[0])
 
     if params["Activation"] == "AbsLayer":
         activation = AbsLayer()
@@ -342,10 +343,10 @@ def load_model_run(folderpath, differential_training=False):
 
     if "n_neurons" in params and "hidden_layers" in params:  # newer cfgs have these entries
         model = init_network(
-            encoding, model_type=params["Model"], activation=activation, n_neurons=params["n_neurons"], hidden_layers=params["hidden_layers"], siren_omega=params["siren"]["omega"])
+            encoding, model_type=params["Model"], activation=activation, n_neurons=params["n_neurons"], hidden_layers=params["hidden_layers"], siren_omega=omega)
     else:
         model = init_network(
-            encoding, model_type=params["Model"], activation=activation, siren_omega=params["siren"]["omega"])
+            encoding, model_type=params["Model"], activation=activation, siren_omega=omega)
     model.load_state_dict(torch.load(folderpath + "best_model.mdl"))
 
     # if not differential, _nu masses will just be None

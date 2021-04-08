@@ -41,8 +41,10 @@ sample_altitude_constant = {
     "Itokawa.pk": 0.5 * 0.5607019066810608 / 0.350438691675663,
     "Itokawa_nu.pk": 0.5 * 0.5607019066810608 / 0.350438691675663,
     "Hollow.pk": 0.8,
+    "Hollow2.pk": 0.8,
     "Hollow_nu.pk": 0.8,
-    "Torus.pk": 0.8
+    "Hollow2_nu.pk": 0.8,
+    "Torus.pk": 0.8,
 }
 
 
@@ -74,9 +76,12 @@ for folder in folders:
     val_res = gravann.validation_results_unpack_df(validation_results)
 
     # Accumulate results
-    result_dictionary = {"Sample": sample,
-                         "Loss": cfg["Loss"],
-                         "Altitudes": sample_altitude_constant[sample] * sampling_altitudes}
+    result_dictionary = {
+        "Folder": folder,
+        "Sample": sample,
+        "Loss": cfg["Loss"],
+        "Altitudes": sample_altitude_constant[sample] * sampling_altitudes,
+    }
 
     run_results = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)

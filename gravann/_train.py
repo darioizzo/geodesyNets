@@ -334,7 +334,7 @@ def load_model_run(folderpath, differential_training=False):
 
     sample = params["Sample"]
     encoding = globals()[params["Encoding"]]()
-    omega = float(folderpath.split("omega=")[1].split("/")[0])
+    omega = float(folderpath.split("omega=")[1].split("/")[0].split("_")[0])
 
     if params["Activation"] == "AbsLayer":
         activation = AbsLayer()

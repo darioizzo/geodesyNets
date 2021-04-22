@@ -664,7 +664,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     levels = np.linspace(np.min(rho.cpu().detach().numpy()),
                          np.max(rho.cpu().detach().numpy()), 10)
 
-    fig = plt.figure(figsize=(3, 10), dpi=150, facecolor='white')
+    fig = plt.figure(figsize=(3.5, 10), dpi=150, facecolor='white')
     ax = fig.add_subplot(411, projection='3d')
     # ax.set_facecolor(backcolor)
     rejection_col = 'yellow'
@@ -678,10 +678,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
     ax.view_init(elev=45., azim=45.)
-    ax.tick_params(labelsize=6)
-    ax.set_xlabel("X", fontsize=8)
-    ax.set_ylabel("Y", fontsize=8)
-    ax.set_zlabel("Z", fontsize=8)
+    ax.tick_params(labelsize=10)
+    ax.set_xlabel("X", fontsize=12)
+    ax.set_ylabel("Y", fontsize=12)
+    ax.set_zlabel("Z", fontsize=12)
 
     # X Rectangle
     ax.plot_wireframe(np.asarray([[0, 0], [0, 0]])+offset, np.asarray([[1, 1], [-1, -1]]),
@@ -707,14 +707,14 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
 
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
-    ax2.tick_params(labelsize=6, color="green")
-    ax2.set_xlabel("X", fontsize=8)
-    ax2.set_ylabel("Y", fontsize=8)
+    ax2.set_xlabel("X", fontsize=12)
+    ax2.set_ylabel("Y", fontsize=12)
+    # ax2.set_title("X-Y cross section (green slice)", fontsize=8)
+    ax2.tick_params(labelsize=10, color="green")
     ax2.spines['bottom'].set_color('green')
     ax2.spines['top'].set_color('green')
     ax2.spines['right'].set_color('green')
     ax2.spines['left'].set_color('green')
-    ax2.set_title("X-Y cross section (green slice)", fontsize=8)
     ax2.set_aspect('equal', 'box')
 
     ax3 = fig.add_subplot(413)
@@ -728,10 +728,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
 
     ax3.set_xlim([-1, 1])
     ax3.set_ylim([-1, 1])
-    ax3.set_xlabel("X", fontsize=8)
-    ax3.set_ylabel("Z", fontsize=8)
-    ax3.set_title("X-Z cross section (blue slice)", fontsize=8)
-    ax3.tick_params(labelsize=6, color="blue")
+    ax3.set_xlabel("X", fontsize=12)
+    ax3.set_ylabel("Z", fontsize=12)
+    # ax3.set_title("X-Z cross section (blue slice)", fontsize=8)
+    ax3.tick_params(labelsize=10, color="blue")
     ax3.spines['bottom'].set_color('blue')
     ax3.spines['top'].set_color('blue')
     ax3.spines['right'].set_color('blue')
@@ -748,10 +748,10 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
                 s=normalized_masses[mask], alpha=mascon_alpha)
     ax4.set_xlim([-1, 1])
     ax4.set_ylim([-1, 1])
-    ax4.set_xlabel("Y", fontsize=8)
-    ax4.set_ylabel("Z", fontsize=8)
-    ax4.set_title("Y-Z cross section (red slice)", fontsize=8)
-    ax4.tick_params(labelsize=6, color="red")
+    ax4.set_xlabel("Y", fontsize=12)
+    ax4.set_ylabel("Z", fontsize=12)
+    # ax4.set_title("Y-Z cross section (red slice)", fontsize=8)
+    ax4.tick_params(labelsize=10, color="red")
     ax4.spines['bottom'].set_color('red')
     ax4.spines['top'].set_color('red')
     ax4.spines['right'].set_color('red')
@@ -1048,8 +1048,8 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
         p = ax.contour(X, Y, Z, cmap=cmap, levels=levels)
         norm = mpl.colors.BoundaryNorm(levels, cmap.N)
         cb = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
-    cb.ax.tick_params(labelsize=6)
-    cb.set_label('Density', rotation=270, labelpad=15, fontsize=8)
+    cb.ax.tick_params(labelsize=10)
+    cb.set_label('Density', rotation=270, labelpad=15, fontsize=12)
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300)
@@ -1059,7 +1059,7 @@ def plot_model_contours(model, encoding, heatmap=False, section=np.array([0, 0, 
 
 
 def plot_potential_contours(model, encoding, mascon_points, N=100, save_path=None, levels=10, integration_points=10000, scale=1):
-    """Takes a mass density model and plots the gravity potential contours 
+    """Takes a mass density model and plots the gravity potential contours
 
     Args:
         model (callable (N,M)->1): neural model for the asteroid.

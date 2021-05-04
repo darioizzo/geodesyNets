@@ -664,16 +664,17 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     levels = np.linspace(np.min(rho.cpu().detach().numpy()),
                          np.max(rho.cpu().detach().numpy()), 10)
 
-    fig = plt.figure(figsize=(3.5, 10), dpi=150, facecolor='white')
-    ax = fig.add_subplot(411, projection='3d')
+    # fig = plt.figure(figsize=(3.5, 10), dpi=150, facecolor='white')
+    fig = plt.figure(figsize=(14, 10), dpi=150, facecolor='white')
+    ax = fig.add_subplot(221, projection='3d')
     # ax.set_facecolor(backcolor)
     rejection_col = 'yellow'
     mascon_color = "green"
 
     # And we plot it
-    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.01)
+    ax.scatter(x, y, z, color='k', s=normalized_masses, alpha=0.05)
     ax.scatter(points[:, 0].cpu(), points[:, 1].cpu(), points[:, 2].cpu(),
-               marker='.', c=rejection_col, s=s*2, alpha=0.1)
+               marker='.', c=rejection_col, s=s*2, alpha=0.5)
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -692,11 +693,11 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     # Z Rectangle
     ax.plot_wireframe(np.asarray([[-1, 1], [-1, 1]]), np.asarray([[1, 1], [-1, -1]]),
                       np.asarray([[0, 0], [0, 0]])+offset, color="green", linestyle="--", alpha=0.75)
-    ax.set_title("3D View", fontsize=7)
+    # ax.set_title("3D View", fontsize=7)
 
     mascon_slice_thickness = 0.01
 
-    ax2 = fig.add_subplot(412)
+    ax2 = fig.add_subplot(222)
     # ax2.set_facecolor(backcolor)
     mask = torch.logical_and(z - offset < mascon_slice_thickness,
                              z - offset > -mascon_slice_thickness)
@@ -709,7 +710,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.set_ylim([-1, 1])
     ax2.set_xlabel("X", fontsize=12)
     ax2.set_ylabel("Y", fontsize=12)
-    # ax2.set_title("X-Y cross section (green slice)", fontsize=8)
+    ax2.set_title("X-Y cross section (green slice)", fontsize=12)
     ax2.tick_params(labelsize=10, color="green")
     ax2.spines['bottom'].set_color('green')
     ax2.spines['top'].set_color('green')
@@ -717,7 +718,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.spines['left'].set_color('green')
     ax2.set_aspect('equal', 'box')
 
-    ax3 = fig.add_subplot(413)
+    ax3 = fig.add_subplot(223)
     # ax3.set_facecolor(backcolor)
     mask = torch.logical_and(y - offset < mascon_slice_thickness,
                              y - offset > -mascon_slice_thickness)
@@ -730,7 +731,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.set_ylim([-1, 1])
     ax3.set_xlabel("X", fontsize=12)
     ax3.set_ylabel("Z", fontsize=12)
-    # ax3.set_title("X-Z cross section (blue slice)", fontsize=8)
+    ax3.set_title("X-Z cross section (blue slice)", fontsize=12)
     ax3.tick_params(labelsize=10, color="blue")
     ax3.spines['bottom'].set_color('blue')
     ax3.spines['top'].set_color('blue')
@@ -738,7 +739,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.spines['left'].set_color('blue')
     ax3.set_aspect('equal', 'box')
 
-    ax4 = fig.add_subplot(414)
+    ax4 = fig.add_subplot(224)
     # ax4.set_facecolor(backcolor)
     mask = torch.logical_and(x - offset < mascon_slice_thickness,
                              x - offset > -mascon_slice_thickness)
@@ -750,7 +751,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax4.set_ylim([-1, 1])
     ax4.set_xlabel("Y", fontsize=12)
     ax4.set_ylabel("Z", fontsize=12)
-    # ax4.set_title("Y-Z cross section (red slice)", fontsize=8)
+    ax4.set_title("Y-Z cross section (red slice)", fontsize=12)
     ax4.tick_params(labelsize=10, color="red")
     ax4.spines['bottom'].set_color('red')
     ax4.spines['top'].set_color('red')
@@ -763,7 +764,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     if save_path is not None:
         plt.savefig(save_path, bbox_inches='tight', dpi=300)
 
-    return ax
+    return ax, fig
 
 
 def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, mascon_masses, plane="XY",

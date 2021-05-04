@@ -136,7 +136,7 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     return loss, c, vision_loss
 
 
-def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons):
+def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons, data_driven=False):
     """Initializes params for the training run
 
     Args:
@@ -165,7 +165,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     run_folder = cfg["output_folder"] + \
         sample.replace("/", "_") + \
         f"/LR={lr}_loss={loss_fn.__name__}_ENC={encoding.name}_" + \
-        f"BS={batch_size}_target_sample={target_sample_method}_ACT={str(activation)[:-2]}_omega={omega:.2}" + \
+        f"BS={batch_size}_ACT={str(activation)[:-2]}_omega={omega:.2}" + \
         f"_layers={hidden_layers}_neurons={n_neurons}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
@@ -182,9 +182,12 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
 
     # Here we set the method to sample the target points. We use a low precision mesh to exclude points inside the asteroid.
     sample_lp = sample[:-3]+"_lp.pk"
-    targets_point_sampler = get_target_point_sampler(
-        batch_size, method=target_sample_method,
-        bounds=cfg["model"]["sample_domain"], limit_shape_to_asteroid="3dmeshes/" + sample_lp)
+    if data_driven:
+        targets_point_sampler = target_sample_method[0]
+    else:
+        targets_point_sampler = get_target_point_sampler(
+            batch_size, method=target_sample_method,
+            bounds=cfg["model"]["sample_domain"], limit_shape_to_asteroid="3dmeshes/" + sample_lp)
 
     if cfg["training"]["visual_loss"]:
         # Setup sampler to get points outside asteroid for visual loss
@@ -196,7 +199,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     return model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder
 
 
-def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons):
+def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons, data_driven=False, resample_frequency=10):
     """Runs a specific parameter configuration
     Args:
         cfg (dict): global run cfg 
@@ -209,11 +212,13 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         omega (float): Siren omega value
         hidden_layers (int, optional): Number of hidden layers in the network.
         n_neurons (int, optional): Number of neurons per layer.
+        data_driven (bool, optional): If enabled expects target sampler to be a tuple of methods (get_train_batch,get_validation_batch,get_labels). These will then be used.
+        resample_frequency (int, optional): How often we resample target points
     """
     start = time.time()
     # Initialize everything we need
     initialized_vars = _init_training_run(
-        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons)
+        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons, data_driven=data_driven)
     model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder = initialized_vars
 
     mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(
@@ -236,7 +241,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
                                           save_path=run_folder + "contour_plot_iter" + format(it, '06d') + ".png", c=c)
             plt.close('all')
         # Each ten epochs we resample the target points
-        if (it % 10 == 0):
+        if (it % resample_frequency == 0):
             target_points = targets_point_sampler()
 
         # will be None if not USE_VISUAL_LOSS
@@ -244,7 +249,9 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
 
         # We generate the labels
         if cfg["model"]["use_acceleration"]:
-            if cfg["training"]["differential_training"]:
+            if data_driven:
+                labels = target_sample_method[2](target_points)
+            elif cfg["training"]["differential_training"]:
                 labels = ACC_L_differential(
                     target_points, mascon_points, mascon_masses_u, mascon_masses_nu)
             else:
@@ -281,11 +288,17 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     # Restore best checkpoint
     print("Restoring best checkpoint for validation...")
     model.load_state_dict(torch.load(run_folder + "best_model.mdl"))
+    
+    #If data driven get validation sampler
+    data_sampler = (target_sample_method[1],target_sample_method[2]) if data_driven else None
+
     validation_results = validation(
         model, encoding, mascon_points, mascon_masses_u,
         cfg["model"]["use_acceleration"], "3dmeshes/" + sample,
         mascon_masses_nu=mascon_masses_nu,
-        N_integration=500000, N=cfg["training"]["validation_points"])
+        N_integration=500000, N=cfg["training"]["validation_points"],
+        data_sampler=data_sampler,
+        batch_size= batch_size if data_driven else 100)
 
     save_results(loss_log, weighted_average_log,
                  validation_results, model, run_folder)
@@ -297,14 +310,17 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     cfg_dict = {"Sample": sample, "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                 "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
                 "n_neurons": cfg["model"]["n_neurons"], "hidden_layers": cfg["model"]["hidden_layers"],
-                "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method,
+                "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method if type(target_sample_method) == str else "data_driven",
                 "Integration Points": cfg["integration"]["points"], "Vision Loss": cfg["training"]["visual_loss"], "c": c}
 
     with open(run_folder+'config.pk', 'wb') as handle:
         pk.dump(cfg_dict, handle)
 
     # Compute validation results
-    val_res = validation_results_unpack_df(validation_results)
+    if not data_driven:
+        val_res = validation_results_unpack_df(validation_results)
+    else:
+        val_res = validation_results # this may not be very clean atm
 
     end = time.time()
     runtime = end - start
@@ -315,7 +331,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
                          "Runtime": runtime, "Final Loss": loss_log[-1], "Final WeightedAvg Loss": weighted_average_log[-1], "Final Vision Loss": vision_loss_log[-1]}
     results_df = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)
-    return results_df
+    return results_df, model
 
 
 def load_model_run(folderpath, differential_training=False):

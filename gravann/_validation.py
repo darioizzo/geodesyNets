@@ -10,7 +10,7 @@ from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 from ._utils import fixRandomSeeds
 
 
-def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_masses_nu=None, use_acc=True):
+def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_masses_nu=None, use_acc=True, data_sampler=None):
     """Computes the current c constant for a model.
 
     Args:
@@ -20,21 +20,28 @@ def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_ma
         mascon_masses (torch.tensor): asteroid mascon masses
         mascon_masses_nu (torch.tensor): asteroid mascon masses
         use_acc (bool): if acceleration should be used (otherwise potential)
+        data_sampler (tuple, optional): If observed data is used, it should be passed as tuple of functions (get_validation_points,get_labels).
     """
-    targets_point_sampler = get_target_point_sampler(
-        1000, method="spherical", bounds=[0.81, 1.0])
-    target_points = targets_point_sampler()
-    if use_acc:
-        if mascon_masses_nu == None:
-            labels = ACC_L(target_points, mascon_points, mascon_masses)
-            predicted = ACC_trap(target_points, model, encoding, N=100000)
-        else:
-            labels = ACC_L_differential(
-                target_points, mascon_points, mascon_masses, mascon_masses_nu)
-            predicted = ACC_trap(target_points, model, encoding, N=100000)
+    if  data_sampler is not None:
+        target_points = data_sampler[0]()
+        labels = data_sampler[1](target_points)
+        predicted = ACC_trap(target_points, model, encoding, N=300000)
     else:
-        labels = U_L(target_points, mascon_points, mascon_masses)
-        predicted = U_trap_opt(target_points, model, encoding, N=100000)
+        targets_point_sampler = get_target_point_sampler(
+            1000, method="spherical", bounds=[0.81, 1.0])
+        target_points = targets_point_sampler()
+        if use_acc:
+            if mascon_masses_nu == None:
+                labels = ACC_L(target_points, mascon_points, mascon_masses)
+                predicted = ACC_trap(target_points, model, encoding, N=100000)
+            else:
+                labels = ACC_L_differential(
+                    target_points, mascon_points, mascon_masses, mascon_masses_nu)
+                predicted = ACC_trap(target_points, model, encoding, N=100000)
+        else:
+            labels = U_L(target_points, mascon_points, mascon_masses)
+            predicted = U_trap_opt(target_points, model, encoding, N=100000)
+    
     return (torch.sum(predicted*labels)/torch.sum(predicted*predicted)).item()
 
 
@@ -53,10 +60,79 @@ def validation_results_unpack_df(validation_results):
     return v
 
 
+def data_driven_validation(model, encoding,
+               N=5000, N_integration=500000, 
+               batch_size=100, progressbar=True, data_sampler=None):
+    """Computes data-driven loss values for the passed model and data with high precision
+
+    Args:
+        model (torch.nn): trained model
+        encoding (encoding): encoding to use for the points
+        N (int, optional): Number of evaluations per altitude. Defaults to 5000.
+        N_integration (int, optional): Number of integrations points to use. Defaults to 500000.
+        batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
+        progressbar (bool, optional): Display a progress. Defaults to True.
+        data_sampler (tuple, optional): If observed data is used, it should be passed as tuple of functions (get_validation_points,get_labels).
+
+    Returns:
+        pandas dataframe: Results as df
+    """
+    torch.cuda.empty_cache()
+    fixRandomSeeds()
+    
+    label_function = data_sampler[1]
+    integrator = ACC_trap
+    integration_grid, h, N_int = compute_integration_grid(N_integration)
+
+    loss_fns = [normalized_L1_loss,normalized_relative_component_loss, RMSE, relRMSE]
+    cols = ["Normalized L1 Loss", "Normalized Relative Component Loss", "RMSE", "relRMSE"]
+    results = pd.DataFrame(columns=cols)
+
+    ###############################################
+    # Compute validation
+    pred, labels, loss_values = [], [], []
+    target_sampler = data_sampler[0]
+
+    if progressbar:
+        pbar = tqdm(desc="Computing validation...",
+                    total=N)
+
+    for batch in range(N // batch_size):
+        target_points = target_sampler().detach()
+        labels.append(label_function(target_points).detach())
+
+        prediction = integrator(target_points, model, encoding, N=N_int,
+                                h=h, sample_points=integration_grid).detach()
+        pred.append(prediction)
+
+        if progressbar:
+            pbar.update(batch_size)
+        torch.cuda.empty_cache()
+    pred = torch.cat(pred)
+    labels = torch.cat(labels)
+
+    # Compute Losses
+    for loss_fn in loss_fns:
+        if loss_fn in [contrastive_loss, normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]:
+            loss_values.append(torch.mean(
+                loss_fn(pred, labels)).cpu().detach().item())
+        else:
+            loss_values.append(torch.mean(
+                loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
+
+    results = results.append(
+        dict(zip(cols, loss_values)), ignore_index=True)
+
+    if progressbar:
+        pbar.close()
+
+    torch.cuda.empty_cache()
+    return results
+
 def validation(model, encoding, mascon_points, mascon_masses,
                use_acc, asteroid_pk_path,  mascon_masses_nu=None,
                N=5000, N_integration=500000, sampling_altitudes=[0.05, 0.1, 0.25],
-               batch_size=100, russell_points=3, progressbar=True):
+               batch_size=100, russell_points=3, progressbar=True, data_sampler=None):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -73,12 +149,19 @@ def validation(model, encoding, mascon_points, mascon_masses,
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
         russell_points (int , optional): how many points should be sampled per altitude for russel style radial projection sampling. Defaults to 3.
         progressbar (bool, optional): Display a progress. Defaults to True.
+        data_sampler (tuple, optional): If observed data is used, it should be passed as tuple of functions (get_validation_points,get_labels).
 
     Returns:
         pandas dataframe: Results as df
     """
     torch.cuda.empty_cache()
     fixRandomSeeds()
+
+    # separate valdiation for data driven as altitude sampling not applicable
+    if  data_sampler is not None:
+        results = data_driven_validation(model, encoding, batch_size=batch_size, data_sampler=data_sampler, N=N, N_integration=500000)
+        return results
+
     # identity for non-differential
     def prediction_adjustment(tp, mp, mm, x): return x
     if use_acc:

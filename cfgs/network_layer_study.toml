@@ -1,0 +1,66 @@
+name = "network_layer_study"
+cuda_devices = "1"
+plotting_points = 2500
+sample_path = "mascons/"
+samples = [                                         
+    # "Eros.pk",
+    "Churyumov-Gerasimenko.pk",
+    # "Itokawa.pk", #For differential training enable the flag in the training section
+    # "Bennu.pk", #For differential training enable the flag in the training section
+    # "Hollow2.pk", #For differential training enable the flag in the training section
+    # "sample_01_cluster_2400.pk",
+    # "sample_02_cluster_5486.pk",
+    # "sample_03_cluster_2284.pk",
+    # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    # "sample_04_cluster_7315.pk",
+    # "sample_06_cluster_6137.pk",
+    # "sample_07_cluster_2441.pk",
+    # "sample_08_cluster_1970.pk",
+    # "sample_09_cluster_1896.pk",
+    # "Torus.pk",
+]
+
+[model]
+activation = [
+    #"Sigmoid",
+    "Abs",
+    # "Tanh",
+]
+encoding =  [                           
+    # "directional_encoding",
+    "direct_encoding",
+    # "spherical_coordinates"
+]
+target_point_samplers = [
+    "spherical",          
+    #"cubical",
+]
+sample_domain = [0.0,1.0]
+use_acceleration = true
+type = "siren" # either "siren" , "default", "nerf"
+hidden_layers = [3,5,7,9]
+n_neurons = [100]
+
+[siren]
+omega = [30.0]
+
+[integration]
+points = 300000
+limit_domain=false
+domain = [[-1.0,1.0],[-1.0,1.0],[-1.0,1.0]]
+
+[training]
+iterations = 10000
+batch_sizes = [1000]
+lr = 1e-4
+losses = [
+    # "mse_loss",
+    # "normalized_loss",
+    # "normalized_sqrt_L1_loss",
+    "normalized_L1_loss",
+    # "contrastive_loss"
+]
+visual_loss = false
+differential_training=false
+validation_points=10000
+

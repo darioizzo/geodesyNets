@@ -1,22 +1,23 @@
 name = "siren_all_runs"
-cuda_devices = "0"
+cuda_devices = "1"
 plotting_points = 2500
 sample_path = "mascons/"
 samples = [                                         
-    "Eros.pk",
-    "Churyumov-Gerasimenko.pk",
-    "Itokawa.pk", #For differential training enable the flag in the training section
-    "Bennu.pk", #For differential training enable the flag in the training section
-    "sample_01_cluster_2400.pk",
-    "sample_02_cluster_5486.pk",
-    "sample_03_cluster_2284.pk",
-    "sample_04_cluster_6674_hollow_0.3_0.3.pk",
-    "sample_04_cluster_7315.pk",
-    "sample_06_cluster_6137.pk",
-    "sample_07_cluster_2441.pk",
-    "sample_08_cluster_1970.pk",
-    "sample_09_cluster_1896.pk",
-    "Torus.pk",
+    # "Eros.pk",
+    # "Churyumov-Gerasimenko.pk",
+    # "Itokawa.pk", #For differential training enable the flag in the training section
+    # "Bennu.pk", #For differential training enable the flag in the training section
+    # "Hollow2.pk", #For differential training enable the flag in the training section
+    # "sample_01_cluster_2400.pk",
+    # "sample_02_cluster_5486.pk",
+    # "sample_03_cluster_2284.pk",
+    # "sample_04_cluster_6674_hollow_0.3_0.3.pk",
+    # "sample_04_cluster_7315.pk",
+    # "sample_06_cluster_6137.pk",
+    # "sample_07_cluster_2441.pk",
+    # "sample_08_cluster_1970.pk",
+    # "sample_09_cluster_1896.pk",
+    # "Torus.pk",
 ]
 
 [model]
@@ -37,6 +38,8 @@ target_point_samplers = [
 sample_domain = [0.0,1.0]
 use_acceleration = true
 type = "siren" # either "siren" , "default", "nerf"
+hidden_layers = [9]
+n_neurons = [100]
 
 [siren]
 omega = [30.0]

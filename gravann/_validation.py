@@ -10,7 +10,7 @@ from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 from ._utils import fixRandomSeeds
 
 
-def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
+def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_masses_nu=None, use_acc=True):
     """Computes the current c constant for a model.
 
     Args:
@@ -18,14 +18,20 @@ def compute_c_for_model(model, encoding, mascon_points, mascon_masses, use_acc):
         encoding (encoding): encoding to use for the points
         mascon_points (torch.tensor): asteroid mascon points
         mascon_masses (torch.tensor): asteroid mascon masses
+        mascon_masses_nu (torch.tensor): asteroid mascon masses
         use_acc (bool): if acceleration should be used (otherwise potential)
     """
     targets_point_sampler = get_target_point_sampler(
-        500, method="spherical", bounds=[1.0, 1.1])
+        1000, method="spherical", bounds=[0.81, 1.0])
     target_points = targets_point_sampler()
     if use_acc:
-        labels = ACC_L(target_points, mascon_points, mascon_masses)
-        predicted = ACC_trap(target_points, model, encoding, N=100000)
+        if mascon_masses_nu == None:
+            labels = ACC_L(target_points, mascon_points, mascon_masses)
+            predicted = ACC_trap(target_points, model, encoding, N=100000)
+        else:
+            labels = ACC_L_differential(
+                target_points, mascon_points, mascon_masses, mascon_masses_nu)
+            predicted = ACC_trap(target_points, model, encoding, N=100000)
     else:
         labels = U_L(target_points, mascon_points, mascon_masses)
         predicted = U_trap_opt(target_points, model, encoding, N=100000)
@@ -47,25 +53,10 @@ def validation_results_unpack_df(validation_results):
     return v
 
 
-def validation_results_df_to_string(validation_results):
-    """Converts validation df to string
-
-    Args:
-        validation_results (pandas.df): validation results
-
-    Returns:
-        dict: dict of strings with results
-    """
-    result_strings = {}
-    for idx, val in validation_results.iterrows():
-        result_strings[val["Altitude"]
-                       ] = f'ContrL={val["Contrastive Loss"]:.3e},NormL1={val["Normalized L1 Loss"]:.3e},NormL2={val["Normalized Loss"]:.3e},RelL2={val["Normalized Rel. L2 Loss"]:.3e},RelComponent={val["Normalized Relative Component Loss"]}'
-
-    return result_strings
-
-
 def validation(model, encoding, mascon_points, mascon_masses,
-               use_acc, asteroid_pk_path,  mascon_masses_nu=None, N=5000, N_integration=500000, batch_size=100, russell_points=3, progressbar=True):
+               use_acc, asteroid_pk_path,  mascon_masses_nu=None,
+               N=5000, N_integration=500000, sampling_altitudes=[0.05, 0.1, 0.25],
+               batch_size=100, russell_points=3, progressbar=True):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -78,6 +69,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         mascon_masses_nu (torch.tensor): non-uniform asteroid masses. Pass if using differential training
         N (int, optional): Number of evaluations per altitude. Defaults to 5000.
         N_integration (int, optional): Number of integrations points to use. Defaults to 500000.
+        sampling_altitudes (np.array, optional): Altitude to sample at for validation. Defaults to [0.05, 0.1, 0.25].
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
         russell_points (int , optional): how many points should be sampled per altitude for russel style radial projection sampling. Defaults to 3.
         progressbar (bool, optional): Display a progress. Defaults to True.
@@ -87,6 +79,8 @@ def validation(model, encoding, mascon_points, mascon_masses,
     """
     torch.cuda.empty_cache()
     fixRandomSeeds()
+    # identity for non-differential
+    def prediction_adjustment(tp, mp, mm, x): return x
     if use_acc:
         label_function = ACC_L
         integrator = ACC_trap
@@ -96,15 +90,20 @@ def validation(model, encoding, mascon_points, mascon_masses,
         integrator = U_trap_opt
         integration_grid, h, N_int = compute_integration_grid(N_integration)
     if mascon_masses_nu is not None:
-        def label_function(tp, mp, mm): return ACC_L_differential(
-            tp, mp, mm, mascon_masses_nu)
+        c = compute_c_for_model(
+            model, encoding, mascon_points, mascon_masses, mascon_masses_nu, use_acc=use_acc)
+        # Labels for differential need to be computed on non-uniform ground truth
+        def label_function(tp, mp, mm): return ACC_L(tp, mp, mascon_masses_nu)
 
-    loss_fns = [normalized_L1_loss, normalized_loss,
-                normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE]
-    cols = ["Altitude", "Normalized L1 Loss", "Normalized Loss",
-            "Normalized Rel. L2 Loss", "Normalized Relative Component Loss", "RMSE", "relRMSE"]
+        # Predictions for differential need to be adjusted with acceleration from uniform ground truth
+        def prediction_adjustment(
+            tp, mp, mm, x): return ACC_L(tp, mp, mm) + c * x
+
+    loss_fns = [normalized_L1_loss,  # normalized_loss, normalized_relative_L2_loss,
+                normalized_relative_component_loss, RMSE, relRMSE]
+    cols = ["Altitude",  "Normalized L1 Loss",  # "Normalized Loss", "Normalized Rel. L2 Loss",
+            "Normalized Relative Component Loss", "RMSE", "relRMSE"]
     results = pd.DataFrame(columns=cols)
-    sampling_altitudes = [0.05, 0.1, 0.25]
 
     ###############################################
     # Compute validation for radially projected points (outside the asteroid),
@@ -127,8 +126,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
         points = target_points[indices]
         labels.append(label_function(
             points, mascon_points, mascon_masses).detach())
-        pred.append(integrator(points, model, encoding, N=N_int,
-                               h=h, sample_points=integration_grid).detach())
+        prediction = integrator(points, model, encoding, N=N_int,
+                                h=h, sample_points=integration_grid).detach()
+        prediction = prediction_adjustment(
+            points, mascon_points, mascon_masses, prediction)
+        pred.append(prediction)
         if progressbar:
             pbar.update(batch_size)
 
@@ -160,8 +162,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
         points = target_points[indices]
         labels.append(label_function(
             points, mascon_points, mascon_masses).detach())
-        pred.append(integrator(points, model, encoding, N=N_int,
-                               h=h, sample_points=integration_grid).detach())
+        prediction = integrator(points, model, encoding, N=N_int,
+                                h=h, sample_points=integration_grid).detach()
+        prediction = prediction_adjustment(
+            points, mascon_points, mascon_masses, prediction)
+        pred.append(prediction)
         if progressbar:
             pbar.update(batch_size)
 
@@ -182,7 +187,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
 
     ################################################
     # Compute errors at different altitudes
-    for altitude in sampling_altitudes:
+    for idx, altitude in enumerate(sampling_altitudes):
         torch.cuda.empty_cache()
         pred, labels, loss_values = [], [], []
         target_sampler = get_target_point_sampler(
@@ -193,8 +198,11 @@ def validation(model, encoding, mascon_points, mascon_masses,
             labels.append(label_function(
                 target_points, mascon_points, mascon_masses).detach())
 
-            pred.append(integrator(target_points, model, encoding, N=N_int,
-                                   h=h, sample_points=integration_grid).detach())
+            prediction = integrator(target_points, model, encoding, N=N_int,
+                                    h=h, sample_points=integration_grid).detach()
+            prediction = prediction_adjustment(
+                target_points, mascon_points, mascon_masses, prediction)
+            pred.append(prediction)
 
             if progressbar:
                 pbar.update(batch_size)
@@ -212,7 +220,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
                     loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
 
         results = results.append(
-            dict(zip(cols, [altitude] + loss_values)), ignore_index=True)
+            dict(zip(cols, ["Altitude_"+str(idx)] + loss_values)), ignore_index=True)
 
     if progressbar:
         pbar.close()

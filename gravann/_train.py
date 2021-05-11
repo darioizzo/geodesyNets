@@ -20,6 +20,10 @@ from ._validation import validation, validation_results_unpack_df
 from .networks._siren import Siren
 from .networks._nerf import NERF
 
+# Required for loading runs
+from .networks._abs_layer import AbsLayer
+from ._encodings import *
+
 
 def _weights_init(m):
     """Network initialization scheme (note that if xavier uniform is used all outputs will start at, roughly 0.5)
@@ -32,7 +36,7 @@ def _weights_init(m):
         nn.init.uniform_(m.bias.data, -0.0, 0.0)
 
 
-def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="default", siren_omega=30.):
+def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="default", siren_omega=30., hidden_layers=9):
     """ Network architecture. Note that the dimensionality of the first linear layer must match the output of the encoding chosen
 
     Args:
@@ -41,43 +45,37 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="d
         activation (torch activation function, optional): Activation function for the last network layer. Defaults to nn.Sigmoid().
         model_type (str,optional): Defines what model to use. Available "siren", "default", "nerf". Defaults to "default".
         siren_omega (float,optional): Omega value for siren activations. Defaults to 30.
+        hidden_layers (int, optional): Number of hidden layers in the network. Defaults to 9.
 
     Returns:
         torch model: Initialized model
     """
     if model_type == "default":
-        model = nn.Sequential(
-            nn.Linear(encoding.dim, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, n_neurons),
-            nn.ReLU(),
-            nn.Linear(n_neurons, 1),
-            activation
-        )
+        modules = []
+
+        # input layer
+        modules.append(nn.Linear(encoding.dim, n_neurons))
+        modules.append(nn.ReLU())
+
+        # hidden layers
+        for _ in range(hidden_layers-1):
+            modules.append(nn.Linear(n_neurons, n_neurons))
+            modules.append(nn.ReLU())
+
+        # final layer
+        modules.append(nn.Linear(n_neurons, 1))
+        modules.append(activation)
+        model = nn.Sequential(*modules)
 
         # Applying our weight initialization
         _ = model.apply(_weights_init)
         model.in_features = encoding.dim
         return model
     elif model_type == "nerf":
-        return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation, skip=[4])
+        return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation, skip=[4], hidden_layers=hidden_layers)
     elif model_type == "siren":
-        return Siren(in_features=encoding.dim, out_features=1, hidden_features=100,
-                     hidden_layers=9, outermost_linear=True, outermost_activation=activation,
+        return Siren(in_features=encoding.dim, out_features=1, hidden_features=n_neurons,
+                     hidden_layers=hidden_layers, outermost_linear=True, outermost_activation=activation,
                      first_omega_0=siren_omega, hidden_omega_0=siren_omega)
 
 
@@ -138,7 +136,7 @@ def train_on_batch(targets, labels, model, encoding, loss_fn, optimizer, schedul
     return loss, c, vision_loss
 
 
-def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation, omega):
+def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons):
     """Initializes params for the training run
 
     Args:
@@ -151,6 +149,8 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
         omega (float): Siren omega value
+        hidden_layers (int, optional): Number of hidden layers in the network.
+        n_neurons (int, optional): Number of neurons per layer.
 
     Returns:
         model,early_stopper,optimizer,scheduler, target_sampler,vis_sampler,run_folder
@@ -164,15 +164,16 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     # Create folder for this specific run
     run_folder = cfg["output_folder"] + \
         sample.replace("/", "_") + \
-        f"/LR={lr}_loss={loss_fn.__name__}_encoding={encoding.name}_" + \
-        f"batch_size={batch_size}_target_sample={target_sample_method}_activation={str(activation)[:-2]}_omega={omega:.2}/"
+        f"/LR={lr}_loss={loss_fn.__name__}_ENC={encoding.name}_" + \
+        f"BS={batch_size}_target_sample={target_sample_method}_ACT={str(activation)[:-2]}_omega={omega:.2}" + \
+        f"_layers={hidden_layers}_neurons={n_neurons}/"
     pathlib.Path(run_folder).mkdir(parents=True, exist_ok=True)
 
     early_stopper = EarlyStopping(save_folder=run_folder)
 
     # Init model
-    model = init_network(encoding, n_neurons=100,
-                         activation=activation, model_type=cfg["model"]["type"], siren_omega=omega)
+    model = init_network(encoding, n_neurons=n_neurons,
+                         activation=activation, model_type=cfg["model"]["type"], siren_omega=omega, hidden_layers=hidden_layers)
 
     # Setup optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -195,7 +196,7 @@ def _init_training_run(cfg, sample, lr, loss_fn, encoding, batch_size, target_sa
     return model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder
 
 
-def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation, omega):
+def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons):
     """Runs a specific parameter configuration
     Args:
         cfg (dict): global run cfg 
@@ -206,11 +207,13 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         target_sample_method (str): Sampling method to use for target points
         activation (Torch fun): Activation function on last network layer
         omega (float): Siren omega value
+        hidden_layers (int, optional): Number of hidden layers in the network.
+        n_neurons (int, optional): Number of neurons per layer.
     """
     start = time.time()
     # Initialize everything we need
     initialized_vars = _init_training_run(
-        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega)
+        cfg, sample, cfg["training"]["lr"], loss_fn, encoding, batch_size, target_sample_method, activation, omega, hidden_layers, n_neurons)
     model, early_stopper, optimizer, scheduler, targets_point_sampler, visual_target_points_sampler, run_folder = initialized_vars
 
     mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(
@@ -293,6 +296,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     # store run config
     cfg_dict = {"Sample": sample, "Type": "ACC" if cfg["model"]["use_acceleration"] else "U", "Model": cfg["model"]["type"],  "Loss": loss_fn.__name__, "Encoding": encoding.name,
                 "Integrator": cfg["integrator"].__name__, "Activation": str(activation)[:-2],
+                "n_neurons": cfg["model"]["n_neurons"], "hidden_layers": cfg["model"]["hidden_layers"],
                 "Batch Size": batch_size, "LR": cfg["training"]["lr"], "Target Sampler": target_sample_method,
                 "Integration Points": cfg["integration"]["points"], "Vision Loss": cfg["training"]["visual_loss"], "c": c}
 
@@ -312,3 +316,48 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
     results_df = pd.concat(
         [pd.DataFrame([result_dictionary]), val_res], axis=1)
     return results_df
+
+
+def load_model_run(folderpath, differential_training=False):
+    """Will load a model, sample and cfg from a saved training run.
+
+    Args:
+        folderpath (str): Path to the folder containing the config.pk and model.mdl
+        differential_training (bool): Indicates if differential training was used. Defaults to False.
+
+    Returns:
+        model, encoding, sample, c, use_acc, mascon_points, mascon_masses_u, mascon_masses_nu
+    """
+    # Load run parameters
+    with open(folderpath + "config.pk", "rb") as file:
+        params = pk.load(file)
+
+    sample = params["Sample"]
+    encoding = globals()[params["Encoding"]]()
+    omega = float(folderpath.split("omega=")[1].split("/")[0].split("_")[0])
+
+    if params["Activation"] == "AbsLayer":
+        activation = AbsLayer()
+    else:
+        activation = getattr(torch.nn, params["Activation"])()
+
+    if "n_neurons" in params and "hidden_layers" in params:  # newer cfgs have these entries
+        model = init_network(
+            encoding, model_type=params["Model"], activation=activation, n_neurons=params["n_neurons"], hidden_layers=params["hidden_layers"], siren_omega=omega)
+    else:
+        model = init_network(
+            encoding, model_type=params["Model"], activation=activation, siren_omega=omega)
+    model.load_state_dict(torch.load(folderpath + "best_model.mdl"))
+
+    # if not differential, _nu masses will just be None
+    mascon_points, mascon_masses_u, mascon_masses_nu = load_sample(
+        sample, use_differential=differential_training)
+
+    c = params["c"].item()
+
+    use_acc = True if params["Type"] == "ACC" else False
+
+    print("Successfully loaded")
+    print(params)
+
+    return model, encoding, sample, c, use_acc, mascon_points, mascon_masses_u, mascon_masses_nu, params

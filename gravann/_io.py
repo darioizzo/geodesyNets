@@ -24,17 +24,26 @@ def load_sample(sample, use_differential=False):
     mascon_masses_u = torch.tensor(mascon_masses_u)
 
     if use_differential:
-        with open("mascons/"+sample[:-3]+"_nu.pk", "rb") as file:
-            _, mascon_masses_nu, _ = pk.load(file)
-        mascon_masses_nu = torch.tensor(mascon_masses_nu)
-        print("Loaded non-uniform model")
+        try:
+            with open("mascons/"+sample[:-3]+"_nu.pk", "rb") as file:
+                _, mascon_masses_nu, _ = pk.load(file)
+            mascon_masses_nu = torch.tensor(mascon_masses_nu)
+            print("Loaded non-uniform model")
+        except:
+            mascon_masses_nu = None
     else:
         mascon_masses_nu = None
+
+    # If we are on the GPU , make sure these are on the GPU. Some mascons were stored as tensors on the CPU. it is weird.
+    if torch.cuda.is_available():
+        mascon_points = mascon_points.cuda()
+        mascon_masses_u = mascon_masses_u.cuda()
+        if mascon_masses_nu is not None:
+            mascon_masses_nu = mascon_masses_nu.cuda()
 
     print("Name: ", name)
     print("Number of mascon_points: ", len(mascon_points))
     print("Total mass: ", sum(mascon_masses_u).item())
-    print("Maximal minimal distance:", max_min_distance(mascon_points))
     return mascon_points, mascon_masses_u, mascon_masses_nu
 
 

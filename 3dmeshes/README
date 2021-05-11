@@ -1,12 +1,18 @@
 These pickles contain vertices and triangles of
-the surface triangular mesh of asteroids.
+the triangular mesh defining the asteroid surface.
 
-Usage: 
+Usage (example): 
 
+import pickle as pk
 with open("3dmeshes/Eros.pk", "rb") as f:
-    points, triangles = pk.load(f)
+    vertices, triangles = pk.load(f)
 
-The files *_raw are direct exports from the original 3d model. They thus contain the mesh in some axis and in units
-(except for Hollow that is mascon generated and thus the meshes are derived from there directly. The raw files are thus
-only here for consistency as they are identical to the non raw ones)
+vertices is (N, 3) and contains the Cartesian coordinates of points.
+triangles is (M, 3) and contains the indexes of three vertices belonging to a triangle of the mesh)
+
+The files *_raw are direct exports from the original 3d model (e.g. from blender or some other source), except for
+Hollow that is mascon generated and thus the meshes are derived from there directly. Units and axes are unknown at this point.
+
 The files *_lp contain downsized models with 1/10 of the triangles.
+
+Hollow is an early version of Hollow2 which was instead used in the paper and there called planetesimal.

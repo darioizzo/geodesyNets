@@ -13,6 +13,6 @@ triangles is (M, 3) and contains the indexes of three vertices belonging to a tr
 The files *_raw are direct exports from the original 3d model (e.g. from blender or some other source), except for
 Hollow that is mascon generated and thus the meshes are derived from there directly. Units and axes are unknown at this point.
 
-The files *_lp contain downsized models with 1/10 of the triangles.
+The files *_lp contain downsized models with ~1/10 of the triangles.
 
 Hollow is an early version of Hollow2 which was instead used in the paper and there called planetesimal.

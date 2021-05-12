@@ -351,7 +351,7 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(figsize=(6, 5), dpi=150, facecolor='white')
+    fig = plt.figure(figsize=(6, 5), dpi=100, facecolor='white')
     if views_2d:
         ax = fig.add_subplot(221, projection='3d')
     else:
@@ -516,7 +516,7 @@ def plot_model_vs_mascon_rejection(model, encoding, points, masses=None, N=2500,
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(dpi=150, facecolor=backcolor)
+    fig = plt.figure(dpi=100, facecolor=backcolor)
     ax = fig.add_subplot(221, projection='3d')
     ax.set_facecolor(backcolor)
     col = 'cornflowerblue'
@@ -664,8 +664,8 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     levels = np.linspace(np.min(rho.cpu().detach().numpy()),
                          np.max(rho.cpu().detach().numpy()), 10)
 
-    fig = plt.figure(figsize=(3, 10), dpi=150, facecolor='white')
-    ax = fig.add_subplot(411, projection='3d')
+    fig = plt.figure(figsize=(6, 6), dpi=100, facecolor='white')
+    ax = fig.add_subplot(2, 2, 1, projection='3d')
     # ax.set_facecolor(backcolor)
     rejection_col = 'yellow'
     mascon_color = "green"
@@ -696,7 +696,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
 
     mascon_slice_thickness = 0.01
 
-    ax2 = fig.add_subplot(412)
+    ax2 = fig.add_subplot(2, 2, 2)
     # ax2.set_facecolor(backcolor)
     mask = torch.logical_and(z - offset < mascon_slice_thickness,
                              z - offset > -mascon_slice_thickness)
@@ -717,7 +717,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax2.set_title("X-Y cross section (green slice)", fontsize=8)
     ax2.set_aspect('equal', 'box')
 
-    ax3 = fig.add_subplot(413)
+    ax3 = fig.add_subplot(2, 2, 3)
     # ax3.set_facecolor(backcolor)
     mask = torch.logical_and(y - offset < mascon_slice_thickness,
                              y - offset > -mascon_slice_thickness)
@@ -738,7 +738,7 @@ def plot_model_vs_mascon_contours(model, encoding, mascon_points, mascon_masses=
     ax3.spines['left'].set_color('blue')
     ax3.set_aspect('equal', 'box')
 
-    ax4 = fig.add_subplot(414)
+    ax4 = fig.add_subplot(2, 2, 4)
     # ax4.set_facecolor(backcolor)
     mask = torch.logical_and(x - offset < mascon_slice_thickness,
                              x - offset > -mascon_slice_thickness)
@@ -902,7 +902,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     Y_right = points_right[:, y_dim].cpu().numpy()
 
     # Plot left side stuff
-    fig = plt.figure(figsize=(10, 4), dpi=100, facecolor='white')
+    fig = plt.figure(figsize=(8, 4), dpi=100, facecolor='white')
     fig.suptitle("Relative acceleration error in " +
                  plane + " cross section", fontsize=12)
     ax = fig.add_subplot(121, facecolor="black")

@@ -164,8 +164,8 @@ def _get_altitude_sampler(N, altitude, limit_shape_to_asteroid, plot_normals=Fal
     kd_tree = KDTree(centers)
     distances, _ = kd_tree.query(points_at_altitude, k=1)
     distance_correct = np.abs(altitude-distances) < eps
-    warnings.warn("Discarding " + str(len(distance_correct) - np.sum(distance_correct)) + " of " + str(len(distance_correct)) +
-                  " points in altitude sampler which did not meet requested altitude.")
+    print("Discarding " + str(len(distance_correct) - np.sum(distance_correct)) + " of " + str(len(distance_correct)) +
+          " points in altitude sampler which did not meet requested altitude.")
     points_at_altitude = points_at_altitude[distance_correct]
 
     if discard_points_inside:

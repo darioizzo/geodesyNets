@@ -146,7 +146,7 @@ def create_mesh_from_cloud(cloud_points, cube_scale=1, subdivisions=6, stepsize=
 def create_mesh_from_model(model, encoding, cube_scale=1.5, subdivisions=6,  # mesh subdivs
                            stepsize=0.001, target_point=[0, 0, 0], rho_threshold=1.5e-2, verbose=False,
                            plot_each_it=100, max_iter=4000):
-    """Generates a mesh from a point cloud
+    """Generates a mesh from a model
 
     Args:
         model (Torch Model): Model to use 

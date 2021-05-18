@@ -120,6 +120,7 @@ def data_driven_validation(model, encoding, mascon_points, mascon_masses,
 
     for batch in range(N // batch_size):
         target_points = target_sampler().detach()
+        assert len(target_points) == 100
         labels.append(label_function(target_points).detach())
 
         prediction = integrator(target_points, model, encoding, N=N_int,

@@ -301,7 +301,7 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         mascon_masses_nu=mascon_masses_nu,
         N_integration=500000, N=cfg["training"]["validation_points"],
         data_sampler=data_sampler,
-        batch_size= batch_size if data_driven else 100,
+        batch_size=100,
         differential_training_data_driven= data_driven and cfg["training"]["differential_training"])
 
     save_results(loss_log, weighted_average_log,

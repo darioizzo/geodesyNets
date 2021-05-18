@@ -10,7 +10,7 @@ from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
 from ._utils import fixRandomSeeds
 
 
-def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_masses_nu=None, use_acc=True, data_sampler=None):
+def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_masses_nu=None, use_acc=True, data_sampler=None, differential_training_data_driven=False):
     """Computes the current c constant for a model.
 
     Args:
@@ -21,10 +21,14 @@ def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_ma
         mascon_masses_nu (torch.tensor): asteroid mascon masses
         use_acc (bool): if acceleration should be used (otherwise potential)
         data_sampler (tuple, optional): If observed data is used, it should be passed as tuple of functions (get_validation_points,get_labels).
+        differential_training_data_driven (bool, optional): If differential training used in data_driven mode
     """
     if  data_sampler is not None:
         target_points = data_sampler[0]()
-        labels = data_sampler[1](target_points)
+        if differential_training_data_driven:
+            labels = data_sampler[1](target_points) - ACC_L(target_points, mascon_points, mascon_masses)
+        else:
+            labels = data_sampler[1](target_points)
         predicted = ACC_trap(target_points, model, encoding, N=300000)
     else:
         targets_point_sampler = get_target_point_sampler(
@@ -60,19 +64,23 @@ def validation_results_unpack_df(validation_results):
     return v
 
 
-def data_driven_validation(model, encoding,
+def data_driven_validation(model, encoding, mascon_points, mascon_masses,
                N=5000, N_integration=500000, 
-               batch_size=100, progressbar=True, data_sampler=None):
+               batch_size=100, progressbar=True, data_sampler=None,
+               differential_training_data_driven=False):
     """Computes data-driven loss values for the passed model and data with high precision
 
     Args:
         model (torch.nn): trained model
         encoding (encoding): encoding to use for the points
+        mascon_points (torch.tensor): asteroid mascon points
+        mascon_masses (torch.tensor): asteroid mascon masses
         N (int, optional): Number of evaluations per altitude. Defaults to 5000.
         N_integration (int, optional): Number of integrations points to use. Defaults to 500000.
         batch_size (int, optional): batch size (will split N in batches). Defaults to 32.
         progressbar (bool, optional): Display a progress. Defaults to True.
         data_sampler (tuple, optional): If observed data is used, it should be passed as tuple of functions (get_validation_points,get_labels).
+        differential_training_data_driven (bool, optional): If differential training used in data_driven mode
 
     Returns:
         pandas dataframe: Results as df
@@ -80,6 +88,19 @@ def data_driven_validation(model, encoding,
     torch.cuda.empty_cache()
     fixRandomSeeds()
     
+     # identity for non-differential
+    def prediction_adjustment(tp, mp, mm, x): return x
+    if differential_training_data_driven:
+        c = compute_c_for_model(
+            model, encoding, mascon_points, mascon_masses, 
+            data_sampler=data_sampler, 
+            differential_training_data_driven=differential_training_data_driven)
+
+        # Predictions for differential need to be adjusted with acceleration from uniform ground truth
+        def prediction_adjustment(
+            tp, mp, mm, x): return ACC_L(tp, mp, mm) + c * x
+
+
     label_function = data_sampler[1]
     integrator = ACC_trap
     integration_grid, h, N_int = compute_integration_grid(N_integration)
@@ -103,6 +124,9 @@ def data_driven_validation(model, encoding,
 
         prediction = integrator(target_points, model, encoding, N=N_int,
                                 h=h, sample_points=integration_grid).detach()
+        #This adds the uniform acceleration to the differential predicted by model
+        prediction = prediction_adjustment(
+            target_points, mascon_points, mascon_masses, prediction)
         pred.append(prediction)
 
         if progressbar:
@@ -132,7 +156,8 @@ def data_driven_validation(model, encoding,
 def validation(model, encoding, mascon_points, mascon_masses,
                use_acc, asteroid_pk_path,  mascon_masses_nu=None,
                N=5000, N_integration=500000, sampling_altitudes=[0.05, 0.1, 0.25],
-               batch_size=100, russell_points=3, progressbar=True, data_sampler=None):
+               batch_size=100, russell_points=3, progressbar=True, data_sampler=None,
+               differential_training_data_driven = False):
     """Computes different loss values for the passed model and asteroid with high precision
 
     Args:
@@ -150,6 +175,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         russell_points (int , optional): how many points should be sampled per altitude for russel style radial projection sampling. Defaults to 3.
         progressbar (bool, optional): Display a progress. Defaults to True.
         data_sampler (tuple, optional): If observed data is used, it should be passed as tuple of functions (get_validation_points,get_labels).
+        differential_training_data_driven (bool, optional): If differential training used in data_driven mode
 
     Returns:
         pandas dataframe: Results as df
@@ -159,7 +185,9 @@ def validation(model, encoding, mascon_points, mascon_masses,
 
     # separate valdiation for data driven as altitude sampling not applicable
     if  data_sampler is not None:
-        results = data_driven_validation(model, encoding, batch_size=batch_size, data_sampler=data_sampler, N=N, N_integration=500000)
+        results = data_driven_validation(model, encoding, mascon_points, mascon_masses, 
+        batch_size=batch_size, data_sampler=data_sampler, 
+        N=N, N_integration=500000, differential_training_data_driven=differential_training_data_driven)
         return results
 
     # identity for non-differential

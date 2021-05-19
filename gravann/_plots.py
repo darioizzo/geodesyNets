@@ -304,7 +304,7 @@ def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c
         ax4.set_aspect('equal', 'box')
 
 
-def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=50, save_path=None, c=1., progressbar=False, elev=45., azim=45.):
+def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alpha=0.2, crop_p=1e-2, s=50, save_path=None, c=1., progressbar=False, elev=45., azim=45., color='k', figure=None):
     """Plots the neural model of the asteroid density in the [-1,1]**3 cube interpreting the density
     as a probability distribution and performing a rejection sampling approach
 
@@ -322,6 +322,8 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         progressbar (bool optional): activates a progressbar. Defaults to False.
         elev (float): elevation of the 3D view
         azim (float): azimuth for the 3D view
+        color (str): color to be used in the bw plot. Defaults to 'k'
+        figure (matplotlib.figure): plots on an already created figure with the correct axis number and type. Defaults to None
     """
     torch.manual_seed(42)  # Seed torch to always get the same points
     points = []
@@ -351,13 +353,17 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
     points = torch.cat(points, dim=0)[:N]  # concat and discard after N
     rho = torch.cat(rho, dim=0)[:N]  # concat and discard after N
 
-    fig = plt.figure(figsize=(6, 5), dpi=100, facecolor='white')
-    if views_2d:
-        ax = fig.add_subplot(221, projection='3d')
+    if figure is None:
+        fig = plt.figure(figsize=(6, 5), dpi=100, facecolor='white')
+        if views_2d:
+            ax = fig.add_subplot(221, projection='3d')
+        else:
+            ax = fig.add_subplot(111, projection='3d')
     else:
-        ax = fig.add_subplot(111, projection='3d')
+        ax = figure.get_axes()[0]
+        fig = figure
     if bw:
-        col = 'k'
+        col = color
     else:
         col = rho.cpu()
     # And we plot it
@@ -380,7 +386,10 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
                       np.asarray([[0, 0], [0, 0]]), color="green", linestyle="--", alpha=0.75)
 
     if views_2d:
-        ax2 = fig.add_subplot(222)
+        if figure is None:
+            ax2 = fig.add_subplot(222)
+        else:
+            ax2 = figure.get_axes()[1]
         ax2.scatter(points[:, 0].cpu(), points[:, 1].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax2.set_xlim([-1, 1])
@@ -393,7 +402,10 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax2.spines['right'].set_color('green')
         ax2.spines['left'].set_color('green')
 
-        ax3 = fig.add_subplot(223)
+        if figure is None:
+            ax3 = fig.add_subplot(223)
+        else:
+            ax3 = figure.get_axes()[2]
         ax3.scatter(points[:, 0].cpu(), points[:, 2].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax3.set_xlim([-1, 1])
@@ -406,7 +418,10 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
         ax3.spines['right'].set_color('blue')
         ax3.spines['left'].set_color('blue')
 
-        ax4 = fig.add_subplot(224)
+        if figure is None:
+            ax4 = fig.add_subplot(224)
+        else:
+            ax4 = figure.get_axes()[3]
         ax4.scatter(points[:, 1].cpu(), points[:, 2].cpu(),
                     marker='.', c=col, s=s, alpha=alpha)
         ax4.set_xlim([-1, 1])
@@ -421,6 +436,8 @@ def plot_model_rejection(model, encoding, N=1500, views_2d=False, bw=False, alph
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300)
+
+    return fig
 
 
 def plot_gradients_per_layer(model):

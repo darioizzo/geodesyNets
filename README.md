@@ -1,5 +1,4 @@
-# anns4geodesy
-Experiments with artificial neural networks and geodesy
+# GeodesyNets
+Code to train visualize and evaluate neural density fields.
 
-
-![67P Neural Density Field](/figures/67p_low.gif)
+![67P Neural Density Field](/figures/67p_low.gif | width=100)

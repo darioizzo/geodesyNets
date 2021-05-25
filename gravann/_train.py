@@ -250,7 +250,10 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         # We generate the labels
         if cfg["model"]["use_acceleration"]:
             if data_driven:
-                labels = target_sample_method[2](target_points)
+                if cfg["training"]["differential_training"]:
+                    labels = target_sample_method[2](target_points) - ACC_L(target_points, mascon_points, mascon_masses_u)
+                else: 
+                    labels = target_sample_method[2](target_points)
             elif cfg["training"]["differential_training"]:
                 labels = ACC_L_differential(
                     target_points, mascon_points, mascon_masses_u, mascon_masses_nu)
@@ -298,7 +301,8 @@ def run_training(cfg, sample, loss_fn, encoding, batch_size, target_sample_metho
         mascon_masses_nu=mascon_masses_nu,
         N_integration=500000, N=cfg["training"]["validation_points"],
         data_sampler=data_sampler,
-        batch_size= batch_size if data_driven else 100)
+        batch_size=100,
+        differential_training_data_driven= data_driven and cfg["training"]["differential_training"])
 
     save_results(loss_log, weighted_average_log,
                  validation_results, model, run_folder)

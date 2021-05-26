@@ -1,0 +1,12 @@
+name: geodesynet
+channels:
+- conda-forge
+dependencies:
+- python=3.8
+- ipython
+- scikit-learn
+- numpy
+- matplotlib
+- jupyter
+- tqdm>=4.50.0
+- pandas

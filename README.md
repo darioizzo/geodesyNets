@@ -21,6 +21,8 @@ pyvista # only on pypi
 pyvistaqt # only on pypi
 ```
 
+Note that to run the notebooks not in the root folder (i.e. archived) you may also need other dependencies.
+
 # Architecture at a glance
 A geodesyNet represents the body density directly as a function of Cartesian coordinates. 
 Recently, (see https://github.com/bmild/nerf)  a related architecture called Neural Radiance Fields (NeRF) was introduced to represent three-dimensional objects and complex scenes with an impressive accuracy learning from a set of two-dimensional images. The training of a NeRF solves the inverse problem of image rendering as it back-propagates the difference between images rendered from the network and a sparse set of observed images.

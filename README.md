@@ -37,3 +37,6 @@ results in videos such as the one below, obtained using the gravitational signat
 
 ![Neural Density Field for 67p](/figures/67p_low.gif)
 
+![Neural Density Field for 67p](/figures/bennu_low.gif)
+
+

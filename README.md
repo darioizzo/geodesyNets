@@ -37,6 +37,9 @@ results in videos such as the one below, obtained using the gravitational signat
 
 ![Neural Density Field for 67p](/figures/67p_low.gif)
 
+# Neural Density Field for Bennu
+Similarly, the video below refers to the results of differential training over a heterogenous Bennu model.
+
 ![Neural Density Field for 67p](/figures/bennu_low.gif)
 
 

@@ -1,6 +1,10 @@
 # GeodesyNets
 Code to train visualize and evaluate neural density fields using pytorch.
 
+The code was developed and use for the writing of the paper:
+
+Dario Izzo and Pablo Gomez, "Geodesy of irregular small bodies via neural density fields: geodesyNets". [arXiv:2105.13031](https://arxiv.org/pdf/2105.13031.pdf). (2021).
+
 ## Installation
 
 We recommend using a [conda](https://docs.conda.io/en/latest/) environment to run this code. Once you have conda, you can simply execute the `install.sh` script to create a conda environment called `geodesynet` with all required modules. In case you want to install in another way or encounter problems, you need to install the following depedencies:

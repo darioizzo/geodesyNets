@@ -31,6 +31,7 @@ def load_sample(sample, use_differential=False):
             print("Loaded non-uniform model")
         except:
             mascon_masses_nu = None
+            print("Could not load non-uniform model!")
     else:
         mascon_masses_nu = None
 

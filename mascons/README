@@ -4,5 +4,6 @@ Usage:
 with open("Itokawa_mascon.pk", "rb") as file:
     points, masses, name = pk.load(file)
 
-The files *_nu contain heterogeneos density versions. The heterogenuity being taken from the literature. (or in the case of Hollow generated)
-The files *_nu_e contain heterogeneos density versions. The heterogenuity being exaggerated 10 folds.
+The files *_nu contain heterogeneos density versions. The heterogenuity being a factor of 2 (head-tail, equator-poles). (or in the case of Hollow generated)
+The files *_nu_e contain heterogeneos density versions. The heterogenuity being exaggerated ~10 folds.
+The files *_nux.x contains heterogeneos density versions. The heterogenuity being x.x factor between regions (head-tail, equator-poles).

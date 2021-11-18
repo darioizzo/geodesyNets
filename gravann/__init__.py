@@ -46,6 +46,9 @@ from .networks._abs_layer import AbsLayer
 # Import utility functions
 from ._utils import max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box, EarlyStopping
 
+# Stokes coefficient utilities
+from ._stokes import mascon2stokes
+
 # Set main device by default to cpu if no other choice was made before
 if "TORCH_DEVICE" not in os.environ:
     os.environ["TORCH_DEVICE"] = 'cpu'

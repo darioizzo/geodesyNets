@@ -43,7 +43,7 @@ def spherical2cart(r, theta, phi):
     return x, y, z
 
 
-def _single_mascon_contribution(mascon_point, mascon_mass, R0, M, l, m):
+def _single_mascon_contribution(mascon_point, mascon_mass, R0, l, m):
     x,y,z = mascon_point
     r, theta, phi = cart2spherical(x,y,z)
     stokesC = mascon_mass
@@ -65,10 +65,10 @@ def _single_mascon_contribution(mascon_point, mascon_mass, R0, M, l, m):
             normalized = np.sqrt(np.math.factorial(ll+mm) / (2-delta)/(2*ll+1)/np.math.factorial(ll-mm))
             stokesS[mm,ll] *= coeff1*coeff2S*coeff3*normalized
             stokesC[mm,ll] *= coeff1*coeff2C*coeff3*normalized 
-    return (stokesC / M, stokesS / M)
+    return (stokesC, stokesS)
 
 
-def mascon2stokes(mascon_points, mascon_masses, R0, M, l, m):
+def mascon2stokes(mascon_points, mascon_masses, R0, l, m):
     """Computes the stokes coefficients out of a mascon model
 
     Args:
@@ -85,7 +85,7 @@ def mascon2stokes(mascon_points, mascon_masses, R0, M, l, m):
     stokesS = 0 
     stokesC = 0 
     for point, mass in zip(mascon_points,mascon_masses):
-        tmpC, tmpS = _single_mascon_contribution(point, mass, R0, M, l, m)
+        tmpC, tmpS = _single_mascon_contribution(point, mass, R0, l, m)
         stokesS+=tmpS
         stokesC+=tmpC
     return (stokesC, stokesS)

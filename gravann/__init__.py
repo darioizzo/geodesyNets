@@ -12,7 +12,7 @@ from ._losses import normalized_loss, mse_loss, normalized_L1_loss, contrastive_
 
 # Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
 from ._integration import ACC_ld, ACC_trap, U_mc, U_ld, U_trap_opt, rho_trap
-from ._integration import sobol_points, compute_integration_grid
+from ._integration import compute_sobol_points, compute_integration_grid
 
 # Methods to load mascons etc.
 from ._io import load_sample

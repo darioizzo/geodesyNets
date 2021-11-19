@@ -6,12 +6,18 @@ from ._encodings import direct_encoding
 
 import os
 
-# We generate 200000 low-discrepancy points in 3D upon module import and store it as a global
-# variable
-"""
-Sobol low discrepancy sequence in 3 dimensions
-"""
-sobol_points = sobol_seq.i4_sobol_generate(3, 500000)
+
+def compute_sobol_points(N=3,M=500000):
+    """Generates the low-discrpancy points Sobol sequence
+
+    Args:
+        N (int, optional): Dimension. Defaults to 3.
+        M (int, optional): Number of points. Defaults to 500000.
+
+    Returns:
+        array NxM: the points.
+    """
+    return sobol_seq.i4_sobol_generate(N, M)
 
 # Naive Montecarlo method for the potential
 
@@ -86,13 +92,14 @@ def U_mc(target_points, model, encoding=direct_encoding(), N=3000, domain=None):
 # Low-discrepancy Montecarlo for the potential
 
 
-def U_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
+def U_ld(target_points, model, sobol_points, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
     """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
 
     Args:
         target_points (2-D array-like): a (N,3) array-like object containing the points.
         model (callable (a,b)->1): neural model for the asteroid. 
         encoding: the encoding for the neural inputs.
+        sobol_points: the Sobol points
         N (int): number of points.
         noise (float): random noise added to point positions.
         domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
@@ -106,7 +113,7 @@ def U_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5, d
                          device=os.environ["TORCH_DEVICE"])
 
     if N > np.shape(sobol_points)[0]:
-        print("Too many points the sobol sequence stored in a global variable only contains 200000.")
+        print("Too many points queried, the Sobol points passed are less.")
     # We generate randomly points in the [-1,1]^3 bounds
     if os.environ["TORCH_DEVICE"] != "cpu":
         sample_points = torch.cuda.FloatTensor(

@@ -92,7 +92,7 @@ def mascon2stokes(mascon_points, mascon_masses, R0, l, m):
         tmpC, tmpS = _single_mascon_contribution(point, mass, R0, l, m)
         stokesS += tmpS
         stokesC += tmpC
-    return (stokesC, stokesS)
+    return (stokesC.transpose(), stokesS.transpose())
 
 
 # Vectorized version of cartesian to spherical coordinates (radius, colatitude (0,pi), longitude  (0,2pi))

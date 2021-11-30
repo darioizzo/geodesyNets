@@ -1,236 +1,169 @@
-import numpy as np
 import torch
 import warnings
-import sobol_seq
 from ._encodings import direct_encoding
 
 import os
 
+import numpy as np
 
-def compute_sobol_points(N=3,M=500000):
-    """Generates the low-discrpancy points Sobol sequence
+from .torchquad.integration.base_integrator import BaseIntegrator
+from .torchquad.integration.integration_grid import IntegrationGrid
+from .torchquad.integration.utils import _setup_integration_domain
 
-    Args:
-        N (int, optional): Dimension. Defaults to 3.
-        M (int, optional): Number of points. Defaults to 500000.
+def tq_integrate(target_points, model, encoding=direct_encoding(), N=10000, grid=None):
+    """Uses a 3D boole rule for the evaluation of the integral in the potential from the modeled density
 
-    Returns:
-        array NxM: the points.
-    """
-    return sobol_seq.i4_sobol_generate(N, M)
+        Args:
+            target_points (2-D array-like): a (N,3) array-like object containing the points.
+            model (callable (a,b)->1): neural model for the asteroid. 
+            encoding: the encoding for the neural inputs.
+            N (int): number of points. If a grid is passed should match that
+            integrator (str): which integrator to use. Defaults to Boole.
+            domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3.
 
-# Naive Montecarlo method for the potential
-
-
-def rho_trap(model, encoding, mask, c, N=10000):
-    """Compute integral over the model where points matching some mask are set to 0
-
-    Args:
-        model (callable (a,b)->1): neural model for the asteroid. 
-        encoding: the encoding for the neural inputs.
-        mask (func): a function that given [N,3] returns a [N] torch.tensor bool as mask
-        c (float): scaling factor for model rho
-        N (int, optional): Integration grid points. Defaults to 10000.
-
-    Returns:
-        torch.tensor: integral value
-    """
-    # clean up memory to ensure we have space
-    torch.cuda.empty_cache()
-
-    # create integration grid
-    sample_points, h, N = compute_integration_grid(N)
-
-    # Evaluate Rho on the grid
-    rho = _compute_model_output(
-        model, encoding, sample_points) * c
-
-    rho[mask(sample_points)] = 0.0
-
-    evaluations = rho.reshape([N, N, N])  # map to z,y,x
-
-    # area = h / 2 * (f0 + f2)
-    int_x = h[0] / 2 * (evaluations[:, :, 0:-1] + evaluations[:, :, 1:])
-    int_x = torch.sum(int_x, dim=2)
-    int_y = h[1] / 2 * (int_x[:, 0:-1] + int_x[:, 1:])
-    int_y = torch.sum(int_y, dim=1)
-    int_z = h[2] / 2 * (int_y[0:-1] + int_y[1:])
-    int_z = torch.sum(int_z, dim=0)
-
-    return int_z
+        Returns:
+            Tensor: Computed potentials per point
+        """
+    integ = TQ_Integrator()
+    return integ.integrate(target_points, model, encoding=encoding, N=N, grid=grid)
 
 
-def U_mc(target_points, model, encoding=direct_encoding(), N=3000, domain=None):
-    """Plain Monte Carlo evaluation of the potential from the modelled density
+class TQ_Integrator(BaseIntegrator):
+    """Boole's rule in torch. See https://en.wikipedia.org/wiki/Newton%E2%80%93Cotes_formulas#Closed_Newton%E2%80%93Cotes_formulas ."""
 
-    Args:
-        target_points (2-D array-like): a (N,3) array-like object containing the points.
-        model (callable (a,b)->1): neural model for the asteroid. 
-        encoding: the encoding for the neural inputs.
-        N (int): number of points.
-        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
-    """
-    if domain is not None:
-        raise NotImplementedError(
-            "Custom domain is not yet implemented for U_mc.")
+    def __init__(self):
+        super().__init__()
 
-    # init result vector
-    retval = torch.empty(len(target_points), 1)
+    def _adjust_N(self, dim, N):
+        """Adjusts the total number of points to a valid number, i.e. N satisfies N^(1/dim) - 1 % 4 == 0.
 
-    # We generate randomly points in the [-1,1]^3 bounds
-    sample_points = torch.rand(N, 3, device=os.environ["TORCH_DEVICE"]) * 2 - 1
+        Args:
+            dim (int): Dimensionality of the integration domain.
+            N (int): Total number of sample points to use for the integration.
 
-    # Evaluate Rho on the points
-    rho = _compute_model_output(model, encoding, sample_points)
+        Returns:
+            int: An N satisfying N^(1/dim) - 1 % 4 == 0.
+        """
+        n_per_dim = int(N ** (1.0 / dim) + 1e-8)
 
-    # Only for the points inside we accumulate the integrand (MC method)
-    for i, target_point in enumerate(target_points):
-        retval[i] = torch.sum(
-            rho/torch.norm(target_point - sample_points, dim=1).view(-1, 1)) / N
-    return - 8 * retval
+        # Boole's rule requires N per dim >=5 and N = 1 + 4n,
+        # where n is a positive integer, for correctness.
+        if n_per_dim < 5:
+            warnings.warn(
+                "N per dimension cannot be lower than 5. "
+                "N per dim will now be changed to 5."
+            )
+            N = 5 ** dim
+        elif (n_per_dim - 1) % 4 != 0:
+            new_n_per_dim = n_per_dim - ((n_per_dim - 1) % 4)
+            warnings.warn(
+                "N per dimension must be N = 1 + 4n with n a positive integer due to necessary subdivisions. "
+                "N per dim will now be changed to the next lower N satisfying this, i.e. "
+                f"{n_per_dim} -> {new_n_per_dim}."
+            )
+            N = (new_n_per_dim) ** (dim)
+        return N
 
-# Low-discrepancy Montecarlo for the potential
+    def integrate(self,target_points, model, encoding=direct_encoding(), N=10000, grid=None):
+        """Uses a 3D boole rule for the evaluation of the integral in the potential from the modeled density
 
+        Args:
+            target_points (2-D array-like): a (N,3) array-like object containing the points.
+            model (callable (a,b)->1): neural model for the asteroid. 
+            encoding: the encoding for the neural inputs.
+            N (int): number of points. If a grid is passed should match that
+            integrator (str): which integrator to use. Defaults to Boole.
+            domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3.
 
-def U_ld(target_points, model, sobol_points, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
-    """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
+        Returns:
+            Tensor: Computed potentials per point
+        """
 
-    Args:
-        target_points (2-D array-like): a (N,3) array-like object containing the points.
-        model (callable (a,b)->1): neural model for the asteroid. 
-        encoding: the encoding for the neural inputs.
-        sobol_points: the Sobol points
-        N (int): number of points.
-        noise (float): random noise added to point positions.
-        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
-    """
-    if domain is not None:
-        raise NotImplementedError(
-            "Custom domain is not yet implemented for U_ld.")
+        domain = [[-1, 1], [-1, 1], [-1, 1]]
 
-    # init result vector
-    retval = torch.empty(len(target_points), 1,
-                         device=os.environ["TORCH_DEVICE"])
+        self._integration_domain = _setup_integration_domain(3, domain)
+        self._check_inputs(dim=3, N=N, integration_domain=self._integration_domain)
+        N = self._adjust_N(dim=3, N=N)
 
-    if N > np.shape(sobol_points)[0]:
-        print("Too many points queried, the Sobol points passed are less.")
-    # We generate randomly points in the [-1,1]^3 bounds
-    if os.environ["TORCH_DEVICE"] != "cpu":
-        sample_points = torch.cuda.FloatTensor(
-            sobol_points[:N, :] * 2 - 1, device=os.environ["TORCH_DEVICE"]) + torch.rand(N, 3, device=os.environ["TORCH_DEVICE"]) * noise
-    else:
-        sample_points = torch.tensor(
-            sobol_points[:N, :] * 2 - 1) + torch.rand(N, 3) * noise
+        # init result vector
+        retval = torch.empty(len(target_points), 3,device=os.environ["TORCH_DEVICE"])
 
-    # Evaluate Rho on the grid
-    rho = _compute_model_output(model, encoding, sample_points)
+        self._dim = 3
 
-    # Compute the integral using the sampled and target points
-    for i, target_point in enumerate(target_points):
-        retval[i] = torch.sum(
-            rho/torch.norm(target_point - sample_points, dim=1).view(-1, 1)) / N
-    return - 8 * retval
+        if grid == None:
+            self._grid = IntegrationGrid(N, self._integration_domain)
+        else:
+            self._grid = grid
 
-# Trapezoid rule for the potential
+        # Evaluate Rho on the grid
+        rho = self._compute_model_output(model, encoding, self._grid.points)
 
+        for i, target_point in enumerate(target_points):
 
-def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None, domain=None):
-    """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
+            # Evaluate all points
+            distance = torch.sub(target_point, self._grid.points)
+            f_values = (rho /
+                        torch.pow(torch.norm(distance, dim=1), 3).view(-1, 1) * distance)
+            
+            
+            f_values = f_values.reshape([self._grid._N]*3+[3])
 
-    Args:
-        target_points (2-D array-like): a (N,3) array-like object containing the points.
-        model (callable (a,b)->1): neural model for the asteroid. 
-        encoding: the encoding for the neural inputs.
-        N (int): number of points. If a grid is passed should match that
-        verbose (bool, optional): Print intermediate results. Defaults to False.
-        noise (float): random noise added to point positions.
-        sample_points (torch tensor): grid to sample the integral on
-        h (float): grid spacing, only has to be passed if grid is passed.
-        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
+            # We collapse dimension by dimension
+            for cur_dim in range(3):
+                f_values = (
+                    self._grid.h[cur_dim]
+                    / 22.5
+                    * (
+                        7 * f_values[..., 0:-4,:][..., ::4,:]
+                        + 32 * f_values[..., 1:-3,:][..., ::4,:]
+                        + 12 * f_values[..., 2:-2,:][..., ::4,:]
+                        + 32 * f_values[..., 3:-1,:][..., ::4,:]
+                        + 7 * f_values[..., 4:,:][..., ::4,:]
+                    )
+                )
+                f_values = torch.sum(f_values, dim=3 - cur_dim - 1)
+            retval[i]  = f_values
+        return -retval
 
-    Returns:
-        Tensor: Computed potentials per point
-    """
-    if domain is not None:
-        raise NotImplementedError(
-            "Custom domain is not yet implemented for U_trap_opt.")
+    def _check_model_encoding_compatibility(self,model, encoding):
+        """ We check that the model is compatible with the encoding in terms of number of inputs
 
-    # init result vector
-    retval = torch.empty(len(target_points), 1,
-                         device=os.environ["TORCH_DEVICE"])
+        Args:
+            model (torch model): model to check
+            encoding (encoding): encoding to use for model input
 
-    # Determine grid to compute on
-    if sample_points is None:
-        sample_points, h, N = compute_integration_grid(N, noise)
-    else:
-        if h is None:
-            raise(ValueError("h has to be passed if sample points are passed."))
-
-    # Evaluate Rho on the grid
-    rho = _compute_model_output(model, encoding, sample_points)
-
-    for i, target_point in enumerate(target_points):
-
-        # Evaluate all points
-        f_values = rho/torch.norm(target_point -
-                                  sample_points, dim=1).view(-1, 1).detach()
-
-        evaluations = f_values.reshape([N, N, N])  # map to z,y,x
-
-        # area = h / 2 * (f0 + f2)
-        int_x = h[0] / 2 * (evaluations[:, :, 0:-1] + evaluations[:, :, 1:])
-        int_x = torch.sum(int_x, dim=2)
-        int_y = h[1] / 2 * (int_x[:, 0:-1] + int_x[:, 1:])
-        int_y = torch.sum(int_y, dim=1)
-        int_z = h[2] / 2 * (int_y[0:-1] + int_y[1:])
-        int_z = torch.sum(int_z, dim=0)
-
-        retval[i] = int_z
-    return -retval
-
-# Low-discrepancy Montecarlo for the acceleration
+        Raises:
+            ValueError: Raises error if model in features != encoding out dim 
+        """
+        if model.in_features != encoding.dim:
+            print("encoding is incompatible with the model")
+            raise ValueError
 
 
-def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
-    """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
+    def _compute_model_output(self,model, encoding, sample_points):
+        """Computes model output on the passed points using the passed encoding
 
-    Args:
-        target_points (2-D array-like): a (N,3) array-like object containing the points.
-        model (callable (a,b)->1): neural model for the asteroid. 
-        encoding: the encoding for the neural inputs.
-        N (int): number of points.
-        noise (float): random noise added to point positions.
-        domain (torch.tensor): integration domain [3,2] , pass None for [-1,1]^3. Currently Not Implemented!
-    """
-    if domain is not None:
-        raise NotImplementedError(
-            "Custom domain is not yet implemented for ACC_ld.")
+        Args:
+            model (torch model): neural network to eval
+            encoding (encoding): encoding for network input (dim has to match)
+            sample_points (torch tensor): points to sample at
 
-    # init result vector
-    retval = torch.empty(len(target_points), 3,
-                         device=os.environ["TORCH_DEVICE"])
+        Returns:
+            torch tensor: computed values
+        """
+        # check dimensions match
+        self._check_model_encoding_compatibility(model, encoding)
 
-    # We check that there are enough sobol points in the global variable
-    if N > np.shape(sobol_points)[0]:
-        raise ValueError(
-            "Too many points the sobol sequence stored in a global variable only contains 200000.")
-    # We generate pseudo-randomly points in the [-1,1]^3 bounds, taking care to have them of the correct type
-    if os.environ["TORCH_DEVICE"] != "cpu":
-        sample_points = torch.cuda.FloatTensor(
-            sobol_points[:N, :] * 2 - 1, device=os.environ["TORCH_DEVICE"]) + torch.rand(N, 3, device=os.environ["TORCH_DEVICE"]) * noise
-    else:
-        sample_points = torch.tensor(
-            sobol_points[:N, :] * 2 - 1) + torch.rand(N, 3) * noise
+        # 1 - compute the inputs to the ANN encoding the sampled points
+        nn_inputs = encoding(sample_points)
 
-    # Evaluate Rho on the grid
-    rho = _compute_model_output(model, encoding, sample_points)
+        # 2 - check if any values were NaN
+        if torch.any(nn_inputs != nn_inputs):
+            warnings.warn("The network generated NaN outputs!")
+            nn_inputs[nn_inputs != nn_inputs] = 0.0  # set Nans to 0
 
-    # the mc integral in the hypercube [-1,1]^3 (volume is 8) for each of the target points
-    for i, target_point in enumerate(target_points):
-        dr = torch.sub(target_point, sample_points)
-        retval[i] = torch.sum(
-            rho/torch.pow(torch.norm(dr, dim=1), 3).view(-1, 1) * dr, dim=0) / N
-    return - 8 * retval
+        # 3 - compute the predicted density at the points
+        return model(nn_inputs)
 
 
 def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None, domain=None):
@@ -267,9 +200,8 @@ def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=
 
     # Evaluate Rho on the grid
     rho = _compute_model_output(model, encoding, sample_points)
-
     for i, target_point in enumerate(target_points):
-
+        
         # Evaluate all points
         distance = torch.sub(target_point, sample_points)
         f_values = (rho /

@@ -1,14 +1,12 @@
 import torch
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle as pk
 import pyvista as pv
-import warnings
 from scipy.spatial import KDTree
 
 from ._utils import unpack_triangle_mesh, get_asteroid_bounding_box
-from ._hulls import is_outside_torch, is_outside
+from ._hulls import is_outside_torch
 
 # There is no torch.pi so we define it here
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732

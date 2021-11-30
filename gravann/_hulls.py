@@ -2,7 +2,6 @@ from scipy.spatial import Delaunay
 import numpy as np
 import torch
 import os
-from copy import deepcopy
 
 
 def alpha_shape(points, alpha, only_outer=True):

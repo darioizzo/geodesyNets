@@ -9,11 +9,7 @@ from ._encodings import directional_encoding, positional_encoding, direct_encodi
 
 # Importing the losses
 from ._losses import normalized_loss, mse_loss, normalized_L1_loss, contrastive_loss, normalized_sqrt_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss
-
-# Importing the method to integrate the density rho(x,y,z) output of an ANN in the unit cube
-from ._integration import ACC_ld, ACC_trap, U_mc, U_ld, U_trap_opt, rho_trap
-from ._integration import compute_sobol_points, compute_integration_grid
-
+from ._integration import tq_integrate, ACC_trap
 # Methods to load mascons etc.
 from ._io import load_sample
 
@@ -27,6 +23,7 @@ from ._plots import plot_model_vs_cloud_mesh, plot_gradients_per_layer, plot_mod
 
 # Importing the validation method
 from ._validation import validation, validation_results_unpack_df, compute_c_for_model
+from ._validation_mascon import validation_mascon
 
 # Importing methods to sample points around asteroid
 from ._sample_observation_points import get_target_point_sampler

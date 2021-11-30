@@ -1,6 +1,6 @@
 from ._sample_observation_points import get_target_point_sampler
 from ._mesh_conversion import create_mesh_from_cloud, create_mesh_from_model
-from ._integration import ACC_ld, U_trap_opt
+from ._integration import tq_integrate
 from ._mascon_labels import ACC_L
 from ._hulls import is_outside_torch, is_outside
 from ._utils import unpack_triangle_mesh
@@ -852,7 +852,7 @@ def plot_model_mascon_acceleration(sample, model, encoding, mascon_points, masco
     # for both network and mascon model
     batch_size = 100
     label_function = ACC_L
-    integrator = ACC_ld
+    integrator = tq_integrate
 
     def prediction_adjustment(tp, mp, mm): return integrator(
         tp, model, encoding, N=200000)*c

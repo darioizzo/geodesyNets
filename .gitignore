@@ -133,3 +133,8 @@ dmypy.json
 
 
 /gifs
+
+cube_masses*
+cube_points*
+stokes
+torchquad

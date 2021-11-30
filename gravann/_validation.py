@@ -6,7 +6,8 @@ import numpy as np
 from ._losses import contrastive_loss, normalized_loss, normalized_L1_loss, normalized_relative_L2_loss, normalized_relative_component_loss, RMSE, relRMSE
 from ._mascon_labels import ACC_L, U_L, ACC_L_differential
 from ._sample_observation_points import get_target_point_sampler
-from ._integration import ACC_trap, U_trap_opt, compute_integration_grid
+from ._integration import tq_integrate
+from .torchquad.integration.integration_grid import IntegrationGrid
 from ._utils import fixRandomSeeds
 
 
@@ -27,14 +28,13 @@ def compute_c_for_model(model, encoding, mascon_points, mascon_masses, mascon_ma
     if use_acc:
         if mascon_masses_nu == None:
             labels = ACC_L(target_points, mascon_points, mascon_masses)
-            predicted = ACC_trap(target_points, model, encoding, N=100000)
+            predicted = tq_integrate(target_points, model, encoding, N=100000)
         else:
             labels = ACC_L_differential(
                 target_points, mascon_points, mascon_masses, mascon_masses_nu)
-            predicted = ACC_trap(target_points, model, encoding, N=100000)
+            predicted = tq_integrate(target_points, model, encoding, N=100000)
     else:
-        labels = U_L(target_points, mascon_points, mascon_masses)
-        predicted = U_trap_opt(target_points, model, encoding, N=100000)
+        raise NotImplementedError()
     return (torch.sum(predicted*labels)/torch.sum(predicted*predicted)).item()
 
 
@@ -83,12 +83,10 @@ def validation(model, encoding, mascon_points, mascon_masses,
     def prediction_adjustment(tp, mp, mm, x): return x
     if use_acc:
         label_function = ACC_L
-        integrator = ACC_trap
-        integration_grid, h, N_int = compute_integration_grid(N_integration)
+        integrator = tq_integrate
+        integration_grid = IntegrationGrid(N_integration,[[-1,1],[-1,1],[-1,1]])
     else:
-        label_function = U_L
-        integrator = U_trap_opt
-        integration_grid, h, N_int = compute_integration_grid(N_integration)
+        NotImplementedError
     if mascon_masses_nu is not None:
         c = compute_c_for_model(
             model, encoding, mascon_points, mascon_masses, mascon_masses_nu, use_acc=use_acc)
@@ -126,8 +124,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         points = target_points[indices]
         labels.append(label_function(
             points, mascon_points, mascon_masses).detach())
-        prediction = integrator(points, model, encoding, N=N_int,
-                                h=h, sample_points=integration_grid).detach()
+        prediction = integrator(points, model, encoding, N=N_integration, grid=integration_grid).detach()
         prediction = prediction_adjustment(
             points, mascon_points, mascon_masses, prediction)
         pred.append(prediction)
@@ -162,8 +159,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
         points = target_points[indices]
         labels.append(label_function(
             points, mascon_points, mascon_masses).detach())
-        prediction = integrator(points, model, encoding, N=N_int,
-                                h=h, sample_points=integration_grid).detach()
+        prediction = integrator(points, model, encoding, N=N_integration,grid=integration_grid).detach()
         prediction = prediction_adjustment(
             points, mascon_points, mascon_masses, prediction)
         pred.append(prediction)
@@ -198,8 +194,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
             labels.append(label_function(
                 target_points, mascon_points, mascon_masses).detach())
 
-            prediction = integrator(target_points, model, encoding, N=N_int,
-                                    h=h, sample_points=integration_grid).detach()
+            prediction = integrator(target_points, model, encoding, N=N_integration,grid=integration_grid).detach()
             prediction = prediction_adjustment(
                 target_points, mascon_points, mascon_masses, prediction)
             pred.append(prediction)

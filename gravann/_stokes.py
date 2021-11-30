@@ -1,6 +1,5 @@
 from copy import deepcopy
 import numpy as np
-from math import factorial as fact
 import scipy
 import torch
 

@@ -27,6 +27,7 @@ from ._plots import plot_model_vs_cloud_mesh, plot_gradients_per_layer, plot_mod
 
 # Importing the validation method
 from ._validation import validation, validation_results_unpack_df, compute_c_for_model
+from ._validation_mascon import validation_mascon
 
 # Importing methods to sample points around asteroid
 from ._sample_observation_points import get_target_point_sampler
@@ -41,7 +42,7 @@ from ._mascon_labels import U_L, ACC_L, ACC_L_differential
 from ._train import init_network, train_on_batch, run_training, load_model_run
 
 # Custom layer for siren
-from .networks._abs_layer import AbsLayer
+from .networks._abs_layer import AbsLayer, SquaredReLU
 
 # Import utility functions
 from ._utils import max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box, EarlyStopping

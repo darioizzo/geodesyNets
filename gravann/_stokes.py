@@ -175,13 +175,13 @@ def constant_factors(l, m):
         float: the factor
     """
     if m == 0:
-        delta = 1.
+        delta = 1
     else:
         delta = 0
-    retval = (2.-delta)*np.math.factorial(l-m)/np.math.factorial(l+m)
+    retval = (2-delta)*np.math.factorial(l-m)/np.math.factorial(l+m)
     retval = retval * \
-        np.sqrt(1./(2.-delta)/np.math.factorial(l-m) /
-                (2.*l+1.)*np.math.factorial(l+m))
+        np.sqrt(1/(2-delta)/np.math.factorial(l-m) /
+                (2*l+1)*np.math.factorial(l+m))
     return retval
 
 # Constructs the vectorized Legendre associated polynomials as lambda funcions
@@ -204,13 +204,14 @@ def legendre_factory_torch(n=16):
     P[0][0] = lambda x: torch.ones(len(x), 1)
     # First we compute all the associated legendre polynomials with l=m. (0,0), (1,1), (2,2), ....
     for l in range(n):
-        P[l+1][l+1] = lambda x, l=l: -(2*l+1) * torch.sqrt(1-x**2) * P[l][l](x)
+        P[l+1][l+1] = lambda x, l=l: - \
+            (2.*l+1.) * torch.sqrt(1.-x**2) * P[l][l](x)
     # Then we compute the ones with l+1,l. (1,0), (2,1), (3,2), ....
     for l in range(n):
-        P[l+1][l] = lambda x, l=l: (2*l+1) * x * P[l][l](x)
+        P[l+1][l] = lambda x, l=l: (2.*l+1.) * x * P[l][l](x)
     # Then all the rest
     for m in range(16+1):
         for l in range(m+1, 16):
-            P[l+1][m] = lambda x, l=l, m=m: ((2*l+1) *
-                                             x * P[l][m](x) - (l+m)*P[l-1][m](x))/(l-m+1)
+            P[l+1][m] = lambda x, l=l, m=m: ((2.*l+1.) *
+                                             x * P[l][m](x) - (l+m)*P[l-1][m](x))/(l-m+1.)
     return P

@@ -42,7 +42,7 @@ from ._mascon_labels import U_L, ACC_L, ACC_L_differential
 from ._train import init_network, train_on_batch, run_training, load_model_run
 
 # Custom layer for siren
-from .networks._abs_layer import AbsLayer, SquaredReLU
+from .networks._abs_layer import AbsLayer
 
 # Import utility functions
 from ._utils import max_min_distance, enableCUDA, fixRandomSeeds, print_torch_mem_footprint, get_asteroid_bounding_box, EarlyStopping

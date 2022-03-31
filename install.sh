@@ -1,4 +1,4 @@
-conda env create -f environment.yml
-conda activate geodesynet
-conda install pytorch=1.6.0 cudatoolkit -c pytorch
+mamba env create -f environment.yml
+mamba activate geodesynet
+mamba install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 pip install sobol_seq pyvista pyvistaqt

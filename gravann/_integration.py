@@ -92,7 +92,7 @@ def U_mc(target_points, model, encoding=direct_encoding(), N=3000, domain=None):
 # Low-discrepancy Montecarlo for the potential
 
 
-def U_ld(target_points, model, sobol_points, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
+def U_ld(target_points, model, sobol_points, encoding=direct_encoding(), N=3000, noise=0., domain=None):
     """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
 
     Args:
@@ -134,7 +134,7 @@ def U_ld(target_points, model, sobol_points, encoding=direct_encoding(), N=3000,
 # Trapezoid rule for the potential
 
 
-def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None, domain=None):
+def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=0., sample_points=None, h=None, domain=None):
     """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
 
     Args:
@@ -191,7 +191,7 @@ def U_trap_opt(target_points, model, encoding=direct_encoding(), N=10000, verbos
 # Low-discrepancy Montecarlo for the acceleration
 
 
-def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5, domain=None):
+def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=0., domain=None):
     """Low discrepancy Monte Carlo evaluation of the potential from the modelled density
 
     Args:
@@ -233,7 +233,7 @@ def ACC_ld(target_points, model, encoding=direct_encoding(), N=3000, noise=1e-5,
     return - 8 * retval
 
 
-def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=1e-5, sample_points=None, h=None, domain=None):
+def ACC_trap(target_points, model, encoding=direct_encoding(), N=10000, verbose=False, noise=0., sample_points=None, h=None, domain=None):
     """Uses a 3D trapezoid rule for the evaluation of the integral in the potential from the modeled density
 
     Args:

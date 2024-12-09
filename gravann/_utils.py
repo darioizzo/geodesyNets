@@ -101,6 +101,14 @@ def max_min_distance(points):
         distances[i] = torch.min(dist)
     return torch.max(distances).item()
 
+def is_quadratic_param(param_name: str) -> bool:
+    return (
+        param_name.endswith(".weight_g") or
+        param_name.endswith(".weight_b") or
+        param_name.endswith(".bias_g") or
+        param_name.endswith(".c")
+    )
+
 
 class EarlyStopping():
     """A rudimentary implementation of callback that tells you when to early stop

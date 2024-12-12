@@ -146,8 +146,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
             loss_values.append(torch.mean(
                 loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
 
-    results = results.append(
-        dict(zip(cols, ["Low Altitude"] + loss_values)), ignore_index=True)
+    results = pd.concat([results, pd.DataFrame.from_records([dict(zip(cols, ["Low Altitude"] + loss_values))])], ignore_index=True)
 
     # High altitude
     torch.cuda.empty_cache()
@@ -182,8 +181,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
             loss_values.append(torch.mean(
                 loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
 
-    results = results.append(
-        dict(zip(cols, ["High Altitude"] + loss_values)), ignore_index=True)
+    results = pd.concat([results, pd.DataFrame.from_records([dict(zip(cols, ["High Altitude"] + loss_values))])], ignore_index=True)
 
     ################################################
     # Compute errors at different altitudes
@@ -219,8 +217,7 @@ def validation(model, encoding, mascon_points, mascon_masses,
                 loss_values.append(torch.mean(
                     loss_fn(pred.view(-1), labels.view(-1))).cpu().detach().item())
 
-        results = results.append(
-            dict(zip(cols, ["Altitude_"+str(idx)] + loss_values)), ignore_index=True)
+        results = pd.concat([results, pd.DataFrame.from_records([dict(zip(cols, ["Altitude_"+str(idx)] + loss_values))])], ignore_index=True)
 
     if progressbar:
         pbar.close()

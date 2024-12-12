@@ -18,6 +18,7 @@ from ._utils import fixRandomSeeds, EarlyStopping
 from ._validation import validation, validation_results_unpack_df
 
 from .networks._siren import Siren
+from .networks._siren_q import SirenQ
 from .networks._nerf import NERF
 
 # Required for loading runs
@@ -75,6 +76,10 @@ def init_network(encoding, n_neurons=100, activation=nn.Sigmoid(), model_type="d
         return NERF(in_features=encoding.dim, n_neurons=n_neurons, activation=activation, skip=[4], hidden_layers=hidden_layers)
     elif model_type == "siren":
         return Siren(in_features=encoding.dim, out_features=1, hidden_features=n_neurons,
+                     hidden_layers=hidden_layers, outermost_linear=True, outermost_activation=activation,
+                     first_omega_0=siren_omega, hidden_omega_0=siren_omega)
+    elif model_type == "siren_q":
+        return SirenQ(in_features=encoding.dim, out_features=1, hidden_features=n_neurons,
                      hidden_layers=hidden_layers, outermost_linear=True, outermost_activation=activation,
                      first_omega_0=siren_omega, hidden_omega_0=siren_omega)
 

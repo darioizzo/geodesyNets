@@ -17,7 +17,6 @@ import pyvista as pv
 import pyvistaqt as pvqt
 from tqdm import tqdm
 from scipy.spatial.transform import Rotation as rotation
-pv.set_plot_theme("night")
 
 
 def plot_model_vs_cloud_mesh(model, gt_mesh, encoding, save_path=None):
@@ -224,6 +223,8 @@ def plot_mascon(mascon_points, mascon_masses=None, elev=45, azim=45, alpha=0.01,
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300)
+    else:
+        plt.show()
 
 
 def plot_model_grid(model, encoding, N=20, bw=False, alpha=0.2, views_2d=True, c=1.):

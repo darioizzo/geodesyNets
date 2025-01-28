@@ -3,11 +3,11 @@ cuda_devices = "1"
 plotting_points = 2500
 sample_path = "mascons/"
 samples = [                                         
-    # "Eros.pk",
-    # "Churyumov-Gerasimenko.pk",
-    # "Itokawa.pk", #For differential training enable the flag in the training section
-    # "Bennu.pk", #For differential training enable the flag in the training section
-    # "Hollow2.pk", #For differential training enable the flag in the training section
+    "Eros.pk",
+    "Churyumov-Gerasimenko.pk",
+    "Itokawa.pk", #For differential training enable the flag in the training section
+    "Bennu.pk", #For differential training enable the flag in the training section
+    "Hollow2.pk", #For differential training enable the flag in the training section
     # "sample_01_cluster_2400.pk",
     # "sample_02_cluster_5486.pk",
     # "sample_03_cluster_2284.pk",
@@ -17,7 +17,7 @@ samples = [
     # "sample_07_cluster_2441.pk",
     # "sample_08_cluster_1970.pk",
     # "sample_09_cluster_1896.pk",
-    # "Torus.pk",
+    "Torus.pk",
 ]
 
 [model]

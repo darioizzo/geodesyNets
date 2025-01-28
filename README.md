@@ -16,7 +16,7 @@ Note that to run some of the notebooks you may also need other dependencies.
 The following script will run the training (non-differential version) for all the homogeneous asteroids in the paper. Changing config you can replicate other paper's results, including ablation studies.
 
 ```sh
-python run_benhmark.py cfgs/siren_all_runs.toml
+python run_benchmark.py cfgs/siren_all_runs.toml
 ```
 
 # Architecture at a glance

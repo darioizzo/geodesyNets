@@ -1,15 +1,15 @@
 from copy import deepcopy
 import numpy as np
-from math import factorial as fact
+import math
 import scipy
 import torch
 
 
-def cart2spherical(x, y, z):
+def cart2spherical(x: float, y: float, z: float):
     """Converts Cartesian to spherical coordinates defined as
      - r (radius)
-     - phi (longitude, in [0, 2pi]) 
-     - theta (colatitude in [0, pi]) 
+     - phi (longitude, in [0, 2pi])
+     - theta (colatitude in [0, pi])
 
     Args:
         x (float): x Cartesian coordinate
@@ -19,11 +19,14 @@ def cart2spherical(x, y, z):
     Returns:
         tuple: the spherical coordinates r, theta, phi
     """
-    r = np.sqrt(x**2+y**2+z**2)
-    theta = np.arccos(z/r)
+    r = np.sqrt(x**2 + y**2 + z**2)
+    theta = np.arccos(z / r)
     phi = np.arctan2(y, x)
+
+    # Ensure phi is in [0, 2π]
     if phi < 0:
-        phi = phi+2*np.pi
+        phi += 2 * np.pi
+
     return r, theta, phi
 
 
@@ -72,27 +75,96 @@ def _single_mascon_contribution(mascon_point, mascon_mass, R0, l, m):
     return (stokesC, stokesS)
 
 
-def mascon2stokes(mascon_points, mascon_masses, R0, l, m):
-    """Computes the stokes coefficients out of a mascon model
+def mascon2stokes(
+    mascon_points: np.ndarray,
+    mascon_masses: np.ndarray,
+    r0: float,
+    l: int,
+    m: int,
+):
+    """Computes the Stokes coefficients from a mascon model or cube.
 
     Args:
-        mascon_points (array(N,3)): cartesian positions of the mascon points
-        mascon_masses (array(N,)): masses of the mascons
-        R0 (float): characteristic radius (oftne the mean equatorial) of the body
-        M (float): total mass of the body
-        l (int): degree
-        m (int): order (must be less or equal the degree)
+        mascon_points (np.ndarray): Cartesian positions of the mascon points.
+        mascon_masses (np.ndarray): Masses of the mascons.
+        r0 (float): Characteristic radius (often mean equatorial radius) of the body.
+        l (int): Degree of spherical harmonics.
+        m (int): Order of spherical harmonics.
 
     Returns:
-        array(l+1,m+1), array(l+1,m+1): Stokes coefficients (Clm, Slm)
+        tuple[np.ndarray, np.ndarray]: Stokes coefficients C and S.
     """
-    stokesS = 0
-    stokesC = 0
+    # Preallocate Stokes coefficients
+    stokesC = np.zeros((m + 1, l + 1))
+    stokesS = np.zeros((m + 1, l + 1))
+
+    # Compute contributions for all mascons
     for point, mass in zip(mascon_points, mascon_masses):
-        tmpC, tmpS = _single_mascon_contribution(point, mass, R0, l, m)
-        stokesS += tmpS
+        tmpC, tmpS = _single_mascon_contribution(point, mass, r0, l, m)
         stokesC += tmpC
-    return (stokesC.transpose(), stokesS.transpose())
+        stokesS += tmpS
+
+    # Convert results back to tensors
+    return stokesC.T, stokesS.T
+
+
+def _single_mascon_contribution(
+    mascon_point: np.ndarray,
+    mascon_mass: float,
+    r0: float,
+    l: int,
+    m: int,
+):
+    """Computes the contribution to Stokes coefficients from a single mascon."""
+    x, y, z = mascon_point
+    r, theta, phi = cart2spherical(x, y, z)
+
+    # Precompute Legendre polynomials for efficiency
+    legendre_polynomials = scipy.special.lpmn(m, l, np.cos(theta))[0]
+
+    # Initialize Stokes coefficients
+    stokesC = np.zeros((m + 1, l + 1))
+    stokesS = np.zeros((m + 1, l + 1))
+
+    for _order in range(m + 1):
+        for _degree in range(_order, l + 1):
+            delta = 1 if _order == 0 else 0
+
+            coeff1 = (r / r0) ** _degree
+            coeff2C = np.cos(_order * phi)
+            coeff2S = np.sin(_order * phi)
+            coeff3 = (
+                (2 - delta)
+                * math.factorial(_degree - _order)
+                / math.factorial(_degree + _order)
+            )
+            normalized = np.sqrt(
+                math.factorial(_degree + _order)
+                / (2 - delta)
+                / (2 * _degree + 1)
+                / math.factorial(_degree - _order)
+            )
+
+            # Update Stokes coefficients
+            stokesC[_order, _degree] += (
+                mascon_mass
+                * legendre_polynomials[_order, _degree]
+                * coeff1
+                * coeff2C
+                * coeff3
+                * normalized
+            )
+            stokesS[_order, _degree] += (
+                mascon_mass
+                * legendre_polynomials[_order, _degree]
+                * coeff1
+                * coeff2S
+                * coeff3
+                * normalized
+            )
+
+    return stokesC, stokesS
+
 
 
 # Vectorized version of cartesian to spherical coordinates (radius, colatitude (0,pi), longitude  (0,2pi))

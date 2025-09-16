@@ -3,7 +3,11 @@ Code to train visualize and evaluate neural density fields using pytorch.
 
 The code was developed and use for the writing of the paper:
 
-Dario Izzo and Pablo Gomez, "Geodesy of irregular small bodies via neural density fields: geodesyNets". [arXiv:2105.13031](https://arxiv.org/pdf/2105.13031.pdf). (2021).
+> Dario Izzo and Pablo Gomez, "Geodesy of irregular small bodies via neural density fields: geodesyNets". [arXiv:2105.13031](https://arxiv.org/pdf/2105.13031.pdf). (2021).
+
+An extension of this work is provided in the repository [esa/masconCube](https://github.com/esa/masconCube), that served as the codebase for the paper:
+
+> Pietro Fanti and Dario Izzo, "MasconCube: Fast and Accurate Gravity Modeling with an Explicit Representation". [arXiv:2509.08607](https://arxiv.org/pdf/2509.08607). (2025).
 
 ## Installation
 
